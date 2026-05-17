@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>فتح المصمك - الفتح التاريخي</title>
+    <title>فتح المصمك - ماريو ستايل</title>
     <style>
         body {
             margin: 0;
@@ -17,35 +17,13 @@
             height: 100vh;
             overflow: hidden;
         }
-        #story-screen {
-            position: absolute;
-            width: 800px;
-            height: 450px;
-            background: rgba(19, 24, 32, 0.95);
-            border: 3px solid #c9a054;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 30px;
-            box-sizing: border-box;
-            z-index: 100;
-        }
-        #story-screen h2 { color: #c9a054; font-size: 28px; margin-bottom: 15px; }
-        #story-screen p { font-size: 18px; line-height: 1.6; max-width: 600px; color: #e2e8f0; }
-        #story-screen button {
-            background: #c9a054; color: #131820; border: none; padding: 10px 25px;
-            font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 25px;
-        }
-        #game-container { position: relative; }
+        #game-container { position: relative; width: 800px; }
         #hud {
             display: flex;
             justify-content: space-between;
             width: 800px;
             background: #161b22;
-            padding: 10px 20px;
+            padding: 12px 20px;
             box-sizing: border-box;
             border: 2px solid #30363d;
             border-bottom: none;
@@ -53,24 +31,61 @@
             font-weight: bold;
         }
         .stat { color: #c9a054; }
+        #canvas-wrapper { position: relative; width: 800px; height: 400px; overflow: hidden; }
         canvas { background: #0b0f14; display: block; border: 2px solid #30363d; }
+        
+        /* خيمة التاجر التفاعلية */
+        #shop-modal {
+            display: none;
+            position: absolute;
+            top: 40px;
+            left: 150px;
+            width: 500px;
+            background: rgba(22, 27, 34, 0.95);
+            border: 3px solid #c9a054;
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 100;
+            box-sizing: border-box;
+        }
+        #shop-modal h2 { margin-top: 0; color: #c9a054; text-align: center; }
+        .shop-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #0d1117; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #30363d;
+        }
+        .shop-item button {
+            background: #c9a054; border: none; padding: 6px 12px; color: #131820; font-weight: bold; cursor: pointer; border-radius: 4px;
+        }
+        .close-shop { background: #fff; color: #000; padding: 5px 10px; border: none; border-radius: 4px; float: left; cursor: pointer; font-weight: bold; }
+        #shop-btn { background: #c9a054; color: #131820; border: none; padding: 4px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="story-screen" id="storyScreen">
-        <h2>⚔️ العالم الأول: فتح المصمك (الرياض القديمة)</h2>
-        <p>"عجلان يحكم حصن المصمك بقبضة من حديد.. الفجر يقترب، وخطة التسلل بدأت.. استعد لفتح الرياض واستعادة هيبة الدار."</p>
-        <button onclick="startGame()">ابدأ التسلل 🐎</button>
+    <div id="hud">
+        <div>❤️ الصحة: <span id="hp" class="stat">3 / 3</span></div>
+        <div>🏹 الأسهم: <span id="arrows" class="stat">5</span></div>
+        <div>💰 الريالات الذهبية: <span id="gold" class="stat">0</span></div>
+        <button id="shop-btn" onclick="toggleShop()">🏪 خيمة التاجر</button>
     </div>
 
     <div id="game-container">
-        <div id="hud">
-            <div>❤️ الصحة: <span id="hp" class="stat">3 / 3</span></div>
-            <div>🏹 الأسهم: <span id="arrows" class="stat">5</span></div>
-            <div>💰 الريالات الذهبية: <span id="gold" class="stat">0</span></div>
+        <div id="shop-modal">
+            <h2>🏪 خيمة التاجر (المتجر التراثي)</h2>
+            <div class="shop-item">
+                <span>🌴 التمرة الذهبية (استعادة 1 قلوب للصحة)</span>
+                <button onclick="buyItem('health', 5)">شراء (5 ريال)</button>
+            </div>
+            <div class="shop-item">
+                <span>🏹 حزمة أسهم (زيادة +5 أسهم للعدّاد)</span>
+                <button onclick="buyItem('arrows', 3)">شراء (3 ريال)</button>
+            </div>
+            <button class="close-shop" onclick="toggleShop()">إغلاق الخيمة</button>
         </div>
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+        <div id="canvas-wrapper">
+            <canvas id="gameCanvas" width="800" height="400"></canvas>
+        </div>
     </div>
 
     <script>
@@ -78,255 +93,245 @@
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
 
-        let gameActive = false;
         let goldCount = 0;
         let arrowCount = 5;
         let health = 3;
+        let maxHealth = 3;
+        let isShopOpen = false;
 
-        // فيزياء Hollow Knight وسلاسل الحركة
+        // إعدادات الكاميرا والفيزياء
+        let cameraX = 0;
+        const mapWidth = 2000; // الماب صار طويل جداً كـ ماريو
         const gravity = 0.55;
         const friction = 0.85;
         const keys = [];
 
-        // البطل بتصميمه البكسل المطور والجديد
         const player = {
-            x: 60,
-            y: 200,
-            width: 26,
-            height: 42,
-            velX: 0,
-            velY: 0,
-            speed: 4.5,
-            jumpForce: 11.5,
-            grounded: false,
-            direction: 'right',
-            isAttacking: false,
-            attackTimer: 0,
-            isAirKicking: false
+            x: 100, y: 200, width: 26, height: 42,
+            velX: 0, velY: 0, speed: 4.5, jumpForce: 11.5,
+            grounded: false, direction: 'right', isAttacking: false, attackTimer: 0
         };
 
-        // البيئة: أسطح طينية وفوانيس الرياض القديمة
+        // المنصات الممتدة عبر الماب الطويل
         const platforms = [
-            { x: 0, y: 360, width: 800, height: 40, name: 'ground' }, // الأرض
-            { x: 180, y: 270, width: 140, height: 14 }, // سطح بيت طيني 1
-            { x: 400, y: 190, width: 160, height: 14 }, // سطح بيت طيني 2
-            { x: 640, y: 260, width: 120, height: 14 }  // مدخل الحصن الداخلي
+            { x: 0, y: 360, width: 2000, height: 40 }, // أرضية طويلة جداً
+            { x: 250, y: 260, width: 150, height: 15 },
+            { x: 500, y: 180, width: 180, height: 15 },
+            { x: 750, y: 250, width: 140, height: 15 },
+            { x: 1000, y: 200, width: 200, height: 15 },
+            { x: 1300, y: 270, width: 160, height: 15 }
         ];
 
-        // الفوانيس المشعة في الليل
-        const lanterns = [
-            { x: 250, y: 240 },
-            { x: 480, y: 160 }
+        // الأعداء (حراس حصن المصمك) يمشون ويهاجمون
+        let enemies = [
+            { x: 300, y: 320, width: 28, height: 40, speed: 1.5, startX: 250, range: 150, alive: true },
+            { x: 550, y: 140, width: 28, height: 40, speed: 2, startX: 500, range: 120, alive: true },
+            { x: 1050, y: 160, width: 28, height: 40, speed: 1.8, startX: 1000, range: 160, alive: true }
         ];
 
-        // قطع الذهب (الريالات القديمة) للجمع
+        // الريالات الذهبية المتناثرة في الماب
         let goldCoins = [
-            { x: 240, y: 230, collected: false },
-            { x: 450, y: 150, collected: false },
-            { x: 500, y: 150, collected: false }
+            { x: 300, y: 220, collected: false },
+            { x: 550, y: 130, collected: false },
+            { x: 620, y: 130, collected: false },
+            { x: 800, y: 210, collected: false },
+            { x: 1100, y: 150, collected: false }
         ];
 
-        // السهام المطلقة في الجو
         let activeArrows = [];
 
-        function startGame() {
-            document.getElementById("story-screen").style.display = "none";
-            gameActive = true;
+        function toggleShop() {
+            isShopOpen = !isShopOpen;
+            document.getElementById("shop-modal").style.display = isShopOpen ? "block" : "none";
         }
 
-        // رسم البطل بالبشت والشماغ وعيون البكسل الواضحة
-        function drawPlayer() {
-            // الشماغ الأحمر والعقال الأسود
-            ctx.fillStyle = "#e63946"; 
-            ctx.fillRect(player.x + 3, player.y, 20, 12);
-            ctx.fillStyle = "#111"; 
-            ctx.fillRect(player.x + 5, player.y + 2, 16, 3);
+        function buyItem(type, price) {
+            if (goldCount >= price) {
+                if (type === 'health' && health < maxHealth) {
+                    goldCount -= price; health++;
+                } else if (type === 'arrows') {
+                    goldCount -= price; arrowCount += 5;
+                } else {
+                    alert("صحتك كاملة يا بطل، لا تحتاج لتمر!"); return;
+                }
+                document.getElementById("gold").innerText = goldCount;
+                document.getElementById("hp").innerText = health + " / " + maxHealth;
+                document.getElementById("arrows").innerText = arrowCount;
+            } else {
+                alert("الريالات الذهبية لا تكفي التاجر! 💰");
+            }
+        }
 
-            // الوجه والتفاصيل
-            ctx.fillStyle = "#ffdbac"; 
-            ctx.fillRect(player.x + 5, player.y + 8, 16, 7);
-            ctx.fillStyle = "#000"; // العيون
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(-cameraX, 0); // تطبيق حركة الكاميرا على اللاعب
+
+            // رسم الشماغ والبشت
+            ctx.fillStyle = "#e63946"; ctx.fillRect(player.x + 3, player.y, 20, 12);
+            ctx.fillStyle = "#111"; ctx.fillRect(player.x + 5, player.y + 2, 16, 3);
+            ctx.fillStyle = "#ffdbac"; ctx.fillRect(player.x + 5, player.y + 8, 16, 7);
+            ctx.fillStyle = "#000"; 
             let eyeOffset = player.direction === 'right' ? 3 : 0;
             ctx.fillRect(player.x + 7 + eyeOffset, player.y + 9, 2, 3);
             ctx.fillRect(player.x + 12 + eyeOffset, player.y + 9, 2, 3);
 
-            // البشت الفخم (العباءة تتحرك مع الحركة)
-            ctx.fillStyle = "#1f1f1f"; 
-            ctx.fillRect(player.x, player.y + 15, 26, 23);
-            // تطريز الزري الذهبي على البشت
-            ctx.fillStyle = "#d4af37";
-            ctx.fillRect(player.x + 6, player.y + 15, 2, 23);
+            ctx.fillStyle = "#1f1f1f"; ctx.fillRect(player.x, player.y + 15, 26, 23);
+            ctx.fillStyle = "#d4af37"; ctx.fillRect(player.x + 6, player.y + 15, 2, 23);
             ctx.fillRect(player.x + 18, player.y + 15, 2, 23);
 
-            // الأقدام البكسل
-            ctx.fillStyle = "#111";
-            ctx.fillRect(player.x + 3, player.y + 38, 6, 4);
-            ctx.fillRect(player.x + 17, player.y + 38, 6, 4);
-
-            // تأثير هجوم السيف الأرضي (F) مع أثر ضوئي بكسل أبيض/فضي
-            if (player.isAttacking && !player.isAirKicking) {
-                ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            // أثر ضربة السيف (F)
+            if (player.isAttacking) {
+                ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
                 if (player.direction === 'right') {
-                    ctx.fillRect(player.x + 26, player.y + 16, 28, 10); // نصل السيف المضيء
-                    ctx.fillStyle = "#d4af37"; // المقبض الذهبي
-                    ctx.fillRect(player.x + 26, player.y + 14, 3, 14);
+                    ctx.fillRect(player.x + 26, player.y + 14, 30, 12);
                 } else {
-                    ctx.fillRect(player.x - 28, player.y + 16, 28, 10);
-                    ctx.fillStyle = "#d4af37";
-                    ctx.fillRect(player.x - 1, player.y + 14, 3, 14);
+                    ctx.fillRect(player.x - 30, player.y + 14, 30, 12);
                 }
             }
-
-            // تأثير الركلة الجوية (Air Kick)
-            if (player.isAirKicking) {
-                ctx.fillStyle = "#ffdbac";
-                if (player.direction === 'right') {
-                    ctx.fillRect(player.x + 24, player.y + 26, 12, 8);
-                } else {
-                    ctx.fillRect(player.x - 12, player.y + 26, 12, 8);
-                }
-            }
+            ctx.restore();
         }
 
-        // رسم البيئة والفوانيس المشعة
-        function drawEnvironment() {
-            // رسم الفوانيس الطينية بنورها الدافئ
-            lanterns.forEach(l => {
-                // هالة الضوء الدائرية
-                let gradient = ctx.createRadialGradient(l.x+6, l.y+8, 2, l.x+6, l.y+8, 45);
-                gradient.addColorStop(0, 'rgba(212, 175, 55, 0.4)');
-                gradient.addColorStop(1, 'rgba(11, 15, 20, 0)');
-                ctx.fillStyle = gradient;
-                ctx.beginPath(); ctx.arc(l.x+6, l.y+8, 45, 0, Math.PI*2); ctx.fill();
+        function drawEntities() {
+            ctx.save();
+            ctx.translate(-cameraX, 0);
 
-                // جسم الفانوس الطيني
-                ctx.fillStyle = "#8b5a2b";
-                ctx.fillRect(l.x, l.y, 12, 16);
-                ctx.fillStyle = "#ffcc00"; // الشعلة بالداخل
-                ctx.fillRect(l.x + 4, l.y + 4, 4, 6);
+            // رسم المنصات التراثية
+            platforms.forEach(p => {
+                ctx.fillStyle = "#5c4033"; ctx.fillRect(p.x, p.y, p.width, p.height);
+                ctx.fillStyle = "#3e2723"; ctx.fillRect(p.x, p.y, p.width, 4); // حافة البلوك
             });
 
-            // رسم المنصات والأسطح
-            platforms.forEach(p => {
-                ctx.fillStyle = "#5c4033"; // لون الطين التراثي القديم للبيوت
-                ctx.fillRect(p.x, p.y, p.width, p.height);
-                ctx.fillStyle = "#3e2723"; // ظلال الطوب السفلي
-                ctx.fillRect(p.x, p.y + p.height - 4, p.width, 4);
+            // رسم الأعداء (الحراس بالزي الطيني الغامق وخوذة بكسل)
+            enemies.forEach(e => {
+                if (!e.alive) return;
+                ctx.fillStyle = "#704214"; ctx.fillRect(e.x, e.y, e.width, e.height);
+                ctx.fillStyle = "#333"; ctx.fillRect(e.x + 2, e.y - 4, 24, 4); // خوذة حارس
+                ctx.fillStyle = "#e63946"; ctx.fillRect(e.x + (e.speed > 0 ? 20 : 4), e.y + 8, 4, 4); // عين حمراء غاضبة
             });
 
             // رسم الريالات الذهبية
             goldCoins.forEach(c => {
                 if (!c.collected) {
-                    ctx.fillStyle = "#d4af37";
-                    ctx.beginPath(); ctx.arc(c.x, c.y, 6, 0, Math.PI*2); ctx.fill();
-                    ctx.fillStyle = "#fff"; ctx.fillRect(c.x-1, c.y-1, 2, 2); // لمعة عملة السدو
+                    ctx.fillStyle = "#d4af37"; ctx.beginPath(); ctx.arc(c.x, c.y, 7, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "#fff"; ctx.fillRect(c.x-1, c.y-1, 3, 3);
                 }
             });
 
-            // رسم الأسهم الطائرة (G)
-            ctx.fillStyle = "#e0e0e0";
-            activeArrows.forEach(arrow => {
-                ctx.fillRect(arrow.x, arrow.y, 12, 3);
-            });
+            // رسم الأسهم
+            ctx.fillStyle = "#fff";
+            activeArrows.forEach(a => { ctx.fillRect(a.x, a.y, 14, 3); });
+
+            ctx.restore();
         }
 
         function update() {
-            if (!gameActive) return;
+            if (isShopOpen) return;
 
-            // حركات الـ Keyboard (A و D)
-            if (keys[65]) { player.velX = -player.speed; player.direction = 'left'; } // A يسار
-            if (keys[68]) { player.velX = player.speed; player.direction = 'right'; }  // D يمين
+            // تحريك اللاعب بالكيبورد A و D
+            if (keys[65]) { player.velX = -player.speed; player.direction = 'left'; }
+            if (keys[68]) { player.velX = player.speed; player.direction = 'right'; }
 
-            // القفز (Spacebar)
             if (keys[32] && !player.jumping && player.grounded) {
-                player.jumping = true;
-                player.grounded = false;
-                player.velY = -player.jumpForce;
+                player.jumping = true; player.grounded = false; player.velY = -player.jumpForce;
             }
 
-            // تطبيق الجاذبية والاحتكاك المتقدم
-            player.velX *= friction;
-            player.velY += gravity;
-            player.grounded = false;
+            player.velX *= friction; player.velY += gravity; player.grounded = false;
 
-            // كشف الاصطدام والوقوف فوق أسطح البيوت الطينية
+            // كشف تصادم المنصات والوقوف عليها كـ ماريو
             platforms.forEach(p => {
                 if (player.x < p.x + p.width && player.x + player.width > p.x &&
                     player.y + player.height <= p.y + 8 && player.y + player.height + player.velY >= p.y) {
-                    player.jumping = false;
-                    player.grounded = true;
-                    player.isAirKicking = false; // إلغاء الركلة عند لمس الأرض
-                    player.velY = 0;
-                    player.y = p.y - player.height;
+                    player.jumping = false; player.grounded = true; player.velY = 0; player.y = p.y - player.height;
                 }
             });
 
             player.x += player.velX;
             player.y += player.velY;
 
-            // منع الخروج من حدود الشاشة
-            if (player.x < 0) player.x = 0;
-            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+            // 🎥 نظام حركة الكاميرا الذكية (ماريو ستايل)
+            // الكاميرا تبدأ تتحرك إذا البطل تجاوز منتصف الشاشة (400 بكسل)
+            cameraX = player.x - 400;
+            if (cameraX < 0) cameraX = 0;
+            if (cameraX > mapWidth - 800) cameraX = mapWidth - 800;
 
-            // إدارة توقيت ضربة السيف والركلة
+            if (player.x < 0) player.x = 0;
+
+            // تحديث السيف
             if (player.isAttacking) {
                 player.attackTimer--;
-                if (player.attackTimer <= 0) {
-                    player.isAttacking = false;
-                    player.isAirKicking = false;
-                }
+                if (player.attackTimer <= 0) player.isAttacking = false;
             }
 
-            // تفعيل حركة الركلة الجوية في حال كان بالهواء وضغط هجوم
-            if (player.jumping && player.isAttacking) {
-                player.isAirKicking = true;
-            }
-
-            // تحريك الأسهم المطلقة
-            activeArrows.forEach((arrow, index) => {
-                arrow.x += arrow.dir === 'right' ? 8 : -8;
-                if (arrow.x > canvas.width || arrow.x < 0) activeArrows.splice(index, 1);
+            // تحريك وتحديث السهام الطائرة واصطدامها بالحراس
+            activeArrows.forEach((a, aIdx) => {
+                a.x += a.dir === 'right' ? 9 : -9;
+                enemies.forEach(e => {
+                    if (e.alive && a.x > e.x && a.x < e.x + e.width && a.y > e.y && a.y < e.y + e.height) {
+                        e.alive = false; // موت الحارس بالسهم!
+                        activeArrows.splice(aIdx, 1);
+                    }
+                });
+                if (a.x > cameraX + 800 || a.x < cameraX) activeArrows.splice(aIdx, 1);
             });
 
-            // جمع العملات الريالية القديمة
+            // تحريك الحراس وذكاء الاصطدام بالسيف واللاعب
+            enemies.forEach(e => {
+                if (!e.alive) return;
+                e.x += e.speed;
+                if (Math.abs(e.x - e.startX) > e.range) e.speed = -e.speed; // دورية ركض
+
+                // 1. إذا ضربت الحارس بالسيف (F)
+                if (player.isAttacking) {
+                    let swordLeft = player.direction === 'right' ? player.x + player.width : player.x - 30;
+                    let swordRight = player.direction === 'right' ? player.x + player.width + 30 : player.x;
+                    if (swordRight > e.x && swordLeft < e.x + e.width && player.y + player.height > e.y && player.y < e.y + e.height) {
+                        e.alive = false; // مات الحارس بضربة السيف الكفو!
+                    }
+                }
+
+                // 2. إذا لمس الحارس اللاعب بدون ضربة سيف (ينقص الدم)
+                if (player.x < e.x + e.width && player.x + player.width > e.x &&
+                    player.y < e.y + e.height && player.y + player.height > e.y) {
+                    health--;
+                    document.getElementById("hp").innerText = health + " / " + maxHealth;
+                    player.x -= player.direction === 'right' ? 40 : -40; // ارتداد بسبب الضرر
+                    if (health <= 0) {
+                        alert("سقط البطل في المحاولة! استعد لإعادة التسلل ⚔️");
+                        health = 3; goldCount = 0; player.x = 100; player.y = 200;
+                        enemies.forEach(en => en.alive = true);
+                        goldCoins.forEach(c => c.collected = false);
+                        document.getElementById("hp").innerText = health + " / " + maxHealth;
+                        document.getElementById("gold").innerText = goldCount;
+                    }
+                }
+            });
+
+            // جمع الذهب الفعلي وتحديث العملات
             goldCoins.forEach(c => {
-                if (!c.collected && player.x < c.x + 6 && player.x + player.width > c.x - 6 &&
-                    player.y < c.y + 6 && player.y + player.height > c.y - 6) {
+                if (!c.collected && player.x < c.x + 7 && player.x + player.width > c.x - 7 &&
+                    player.y < c.y + 7 && player.y + player.height > c.y - 7) {
                     c.collected = true;
-                    goldCount += 5; // كل قطعة بـ 5 ريال ذهبي
+                    goldCount += 2;
                     document.getElementById("gold").innerText = goldCount;
                 }
             });
         }
 
-        // الاستماع لضغطات الكيبورد بدقة (A, D, Space, F, G)
         window.addEventListener("keydown", e => {
             keys[e.keyCode] = true;
-
-            // زر F: ضربة السيف أو الركلة الجوية
-            if (e.keyCode === 70 && !player.isAttacking) {
-                player.isAttacking = true;
-                player.attackTimer = 10; // عدد الإطارات للضربة
+            if (e.keyCode === 70 && !player.isAttacking) { // زر F سيف
+                player.isAttacking = true; player.attackTimer = 8;
             }
-
-            // زر G: إطلاق الأسهم بعيدة المدى
-            if (e.keyCode === 71 && arrowCount > 0 && !player.isAttacking) {
-                arrowCount--;
-                document.getElementById("arrows").innerText = arrowCount;
-                activeArrows.push({
-                    x: player.direction === 'right' ? player.x + player.width : player.x - 12,
-                    y: player.y + 20,
-                    dir: player.direction
-                });
-                // ارتداد خفيف للخلف عند الإطلاق تشبه ألعاب الأكشن الاحترافية
-                player.velX += player.direction === 'right' ? -3 : 3;
+            if (e.keyCode === 71 && arrowCount > 0 && !player.isAttacking) { // زر G سهم
+                arrowCount--; document.getElementById("arrows").innerText = arrowCount;
+                activeArrows.push({ x: player.direction === 'right' ? player.x + player.width : player.x - 10, y: player.y + 18, dir: player.direction });
             }
         });
         window.addEventListener("keyup", e => keys[e.keyCode] = false);
 
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawEnvironment();
+            drawEntities();
             drawPlayer();
             update();
             requestAnimationFrame(gameLoop);
