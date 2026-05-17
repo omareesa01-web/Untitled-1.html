@@ -3,37 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Mario Bros - Retro Replica</title>
+    <title>Super Mario Bros - Original Pixels</title>
     <style>
         body {
-            margin: 0;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            overflow: hidden;
-            font-family: 'Courier New', Courier, monospace;
+            margin: 0; background: #000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; overflow: hidden; font-family: 'Courier New', Courier, monospace;
         }
         #hud {
-            display: flex;
-            justify-content: space-between;
-            width: 512px;
-            background: #5c94fc;
-            color: #fff;
-            padding: 10px 20px;
-            box-sizing: border-box;
-            font-size: 18px;
-            font-weight: bold;
-            border: 4px solid #fff;
-            border-bottom: none;
+            display: flex; justify-content: space-between; width: 512px;
+            background: #5c94fc; color: #fff; padding: 10px 20px; box-sizing: border-box;
+            font-size: 18px; font-weight: bold; border: 4px solid #fff; border-bottom: none;
         }
         canvas {
-            background: #5c94fc; /* اللون الأزرق الرسمي لسماء ماريو الكلاسيكية */
-            display: block;
-            border: 4px solid #fff;
-            image-rendering: pixelated; /* الحفاظ على حدة البكسل بدون تغبيش */
+            background: #5c94fc; display: block; border: 4px solid #fff;
+            image-rendering: pixelated; /* حماية البكسل الأصلي من التغبيش */
         }
     </style>
 </head>
@@ -53,47 +37,41 @@
         const ctx = canvas.getContext("2d");
         ctx.imageSmoothingEnabled = false;
 
-        let coins = 0;
-        let score = 0;
-        let cameraX = 0;
-        const mapWidth = 3000;
+        let coins = 0; let score = 0; let cameraX = 0; const mapWidth = 3000;
+        const gravity = 0.45; const friction = 0.85; const keys = [];
 
-        // فيزياء ماريو الكلاسيكية الدقيقة
-        const gravity = 0.45;
-        const friction = 0.85;
-        const keys = [];
+        // 🖼️ استدعاء صور البكسل آرت الأصلية للعبة نينتندو 1985
+        const spriteSheet = new Image();
+        spriteSheet.src = 'https://info.smbworld.top/assets/images/smb_sprites.png'; // سيرفر خارجي يحمل صور اللعبة الأصلية
 
         const mario = {
-            x: 80, y: 200, width: 24, height: 32,
-            velX: 0, velY: 0, speed: 3.5, jumpForce: 13,
-            grounded: false, direction: 'right'
+            x: 80, y: 320, width: 24, height: 32,
+            velX: 0, velY: 0, speed: 3.5, jumpForce: 12,
+            grounded: false, direction: 'right', frame: 0, frameTimer: 0
         };
 
-        // الماب الأصلي: الأرضية، البلوكات الطوبية، وبلوكات علامات الاستفهام [?]
         const platforms = [
-            // الأرضيات الممتدة
+            // الأرضيات التضاريسية الأصلية
             { x: 0, y: 384, width: 900, height: 64, type: 'ground' },
-            { x: 1000, y: 384, width: 800, height: 64, type: 'ground' }, // حفرة ماريو الشهيرة
+            { x: 1000, y: 384, width: 800, height: 64, type: 'ground' }, 
             { x: 1900, y: 384, width: 1100, height: 64, type: 'ground' },
 
-            // بلوكات العالم 1-1 الشهيرة
+            // التوزيع الكلاسيكي للبلوكات وعلامات الاستفهام [?]
             { x: 300, y: 256, width: 32, height: 32, type: 'brick' },
             { x: 332, y: 256, width: 32, height: 32, type: 'box', hasCoin: true, hit: false },
             { x: 364, y: 256, width: 32, height: 32, type: 'brick' },
             { x: 396, y: 256, width: 32, height: 32, type: 'box', hasCoin: true, hit: false },
             { x: 428, y: 256, width: 32, height: 32, type: 'brick' },
-            { x: 364, y: 140, width: 32, height: 32, type: 'box', hasCoin: true, hit: false }, // البلوك المرتفع
+            { x: 364, y: 140, width: 32, height: 32, type: 'box', hasCoin: true, hit: false },
 
-            // الأنابيب الخضراء (Pipes)
-            { x: 600, y: 320, width: 64, height: 64, type: 'pipe' },
+            // الأنابيب الخضراء السيئة السمعة
+            { x: 630, y: 320, width: 64, height: 64, type: 'pipe' },
             { x: 1300, y: 288, width: 64, height: 96, type: 'pipe' }
         ];
 
-        // الأعداء (الفطر البني الغاضب - Goombas)
         let goombas = [
-            { x: 450, y: 352, width: 32, height: 32, speed: 1.2, alive: true },
-            { x: 800, y: 352, width: 32, height: 32, speed: -1.2, alive: true },
-            { x: 1450, y: 352, width: 32, height: 32, speed: 1.5, alive: true }
+            { x: 480, y: 352, width: 32, height: 32, speed: 1.2, alive: true, frame: 0, timer: 0 },
+            { x: 800, y: 352, width: 32, height: 32, speed: -1.2, alive: true, frame: 0, timer: 0 }
         ];
 
         function updateHud() {
@@ -101,94 +79,85 @@
             document.getElementById("score-txt").innerText = score.toString().padStart(6, '0');
         }
 
-        // رسم ماريو الأصلي بالبكسل (قبعة حمراء، بدلة زرقاء)
+        // 🎨 رسم ماريو بالبكسل الأصلي المستقطع من الصورة الأصلية
         function drawMario() {
-            ctx.save();
-            ctx.translate(-cameraX, 0);
+            ctx.save(); ctx.translate(-cameraX, 0);
 
-            // القبعة الحمراء
-            ctx.fillStyle = "#ff0000"; ctx.fillRect(mario.x + 4, mario.y, 18, 6);
-            ctx.fillRect(mario.x + 8, mario.y + 4, 14, 4);
+            // تحديد إحداثيات ماريو الكلاسيكي داخل لوحة الأصول (Sprite Sheet)
+            let sx = 211; // إحداثي ماريو وهو واقف
+            let sy = 0;
+            
+            if (!mario.grounded) {
+                sx = 351; // بكسل ماريو وهو يقفز طائرًا
+            } else if (Math.abs(mario.velX) > 0.2) {
+                // أنيميشن تبديل الأرجل أثناء الركض الكلاسيكي
+                mario.frameTimer++;
+                if (mario.frameTimer > 6) {
+                    mario.frame = (mario.frame + 1) % 3;
+                    mario.frameTimer = 0;
+                }
+                sx = 241 + (mario.frame * 30); // الانتقال بين فريمات الركض الثلاثة الأصلية
+            }
 
-            // الوجه والشارب الأسود الشهير
-            ctx.fillStyle = "#ffcca3"; ctx.fillRect(mario.x + 6, mario.y + 8, 14, 8);
-            ctx.fillStyle = "#000000"; ctx.fillRect(mario.x + 14, mario.y + 10, 6, 4); // الشارب
-
-            // البدلة والملابس (الأزرق والأحمر الكلاسيكي)
-            ctx.fillStyle = "#0000ff"; ctx.fillRect(mario.x + 4, mario.y + 16, 16, 12); // الملابس الزرقاء
-            ctx.fillStyle = "#ff0000"; ctx.fillRect(mario.x + 2, mario.y + 16, 3, 10);  // الأكمام الحمراء
-            ctx.fillRect(mario.x + 19, mario.y + 16, 3, 10);
-
-            // الحذاء البني
-            ctx.fillStyle = "#8b4513";
-            ctx.fillRect(mario.x + 2, mario.y + 28, 8, 4);
-            ctx.fillRect(mario.x + 14, mario.y + 28, 8, 4);
-
+            // رسم الصورة الأصلية لماريو فوق الكانفاس بوزنيته الحقيقية
+            ctx.drawImage(spriteSheet, sx, sy, 15, 16, mario.x, mario.y, mario.width, mario.height);
             ctx.restore();
         }
 
-        // رسم البيئة، البلوكات والأعداء كما في اللعبة الأصلية
         function drawMap() {
-            ctx.save();
-            ctx.translate(-cameraX, 0);
+            ctx.save(); ctx.translate(-cameraX, 0);
 
             platforms.forEach(p => {
                 if (p.type === 'ground') {
-                    ctx.fillStyle = "#d84418"; ctx.fillRect(p.x, p.y, p.width, p.height); // الأرضية البنية
-                    ctx.fillStyle = "#fc9c4c"; ctx.fillRect(p.x, p.y, p.width, 6);        // التفاصيل الفاتحة للأرض
-                } else if (p.type === 'brick') {
-                    ctx.fillStyle = "#b84418"; ctx.fillRect(p.x, p.y, p.width, p.height); // قوالب الطوب
-                    ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(p.x, p.y, p.width, p.height);
-                } else if (p.type === 'box') {
-                    // صندوق المفاجآت [?]
-                    ctx.fillStyle = p.hit ? "#7c7c7c" : "#fc9c24"; ctx.fillRect(p.x, p.y, p.width, p.height);
-                    ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(p.x, p.y, p.width, p.height);
-                    if (!p.hit) {
-                        ctx.fillStyle = "#fff"; ctx.font = "bold 20px monospace"; ctx.fillText("?", p.x + 10, p.y + 24);
+                    // تكرار رسم بلوك الأرضية الأصلي 1985
+                    for (let xOffset = 0; xOffset < p.width; xOffset += 32) {
+                        for (let yOffset = 0; yOffset < p.height; yOffset += 32) {
+                            ctx.drawImage(spriteSheet, 0, 0, 16, 16, p.x + xOffset, p.y + yOffset, 32, 32);
+                        }
                     }
+                } else if (p.type === 'brick') {
+                    ctx.drawImage(spriteSheet, 16, 0, 16, 16, p.x, p.y, p.width, p.height); // طوب أصلي
+                } else if (p.type === 'box') {
+                    let sx = p.hit ? 48 : 240; // إذا انضرب البلوك يتحول لبلوك بني مصمت
+                    ctx.drawImage(spriteSheet, sx, 0, 16, 16, p.x, p.y, p.width, p.height);
                 } else if (p.type === 'pipe') {
-                    // الأنبوب الأخضر الكلاسيكي
+                    // رسم الأنبوب الأخضر بكامل تفاصيله الأصلية
                     ctx.fillStyle = "#00a800"; ctx.fillRect(p.x, p.y, p.width, p.height);
-                    ctx.fillStyle = "#00d800"; ctx.fillRect(p.x, p.y, 8, p.height); // خط لمعان الأنبوب
-                    ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.strokeRect(p.x, p.y, p.width, p.height);
+                    ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(p.x, p.y, p.width, p.height);
                 }
             });
 
-            // رسم أعداء الفطر (Goombas)
+            // رسم الفطر البني (Goombas) الأصلي بالبكسل
             goombas.forEach(g => {
                 if (!g.alive) return;
-                ctx.fillStyle = "#a81000"; ctx.fillRect(g.x, g.y, g.width, 16); // رأس الفطر البني
-                ctx.fillStyle = "#fce4a0"; ctx.fillRect(g.x + 4, g.y + 16, g.width - 8, 16); // الجسم السفلي
-                ctx.fillStyle = "#000"; ctx.fillRect(g.x + 8, g.y + 6, 4, 6); ctx.fillRect(g.x + 20, g.y + 6, 4, 6); // العيون الغاضبة
+                g.timer++;
+                if (g.timer > 10) { g.frame = g.frame === 0 ? 1 : 0; g.timer = 0; } // تبديل حركة رجول الفطر
+                let sx = 0 + (g.frame * 16);
+                ctx.drawImage(spriteSheet, sx, 16, 16, 16, g.x, g.y, g.width, g.height);
             });
 
             ctx.restore();
         }
 
         function update() {
-            // أزرار الحركة والتنقل المستوحاة من نينتندو (A, D أو الأسهم)
             if (keys[65] || keys[37]) { mario.velX = -mario.speed; mario.direction = 'left'; }
             if (keys[68] || keys[39]) { mario.velX = mario.speed; mario.direction = 'right'; }
 
-            // القفز الدقيق بالمسافة أو السهم العلوي
             if ((keys[32] || keys[38]) && !mario.jumping && mario.grounded) {
                 mario.jumping = true; mario.grounded = false; mario.velY = -mario.jumpForce;
             }
 
             mario.velX *= friction; mario.velY += gravity; mario.grounded = false;
 
-            // معالجة الاصطدام مع قوالب الماب
             platforms.forEach(p => {
-                // 1. الوقوف فوق الأسطح والأرضيات والأنابيب
                 if (mario.x < p.x + p.width && mario.x + mario.width > p.x &&
                     mario.y + mario.height <= p.y + 6 && mario.y + mario.height + mario.velY >= p.y) {
                     mario.jumping = false; mario.grounded = true; mario.velY = 0; mario.y = p.y - mario.height;
                 }
 
-                // 2. ضرب البلوكات بالرأس من الأسفل لإخراج الذهب الكلاسيكي!
                 if (mario.x < p.x + p.width && mario.x + mario.width > p.x &&
                     mario.y >= p.y + p.height - 6 && mario.y + mario.velY <= p.y + p.height) {
-                    mario.velY = 2; // الارتداد للأسفل فوراً بعد النطح
+                    mario.velY = 2;
                     if (p.type === 'box' && !p.hit && p.hasCoin) {
                         p.hit = true; coins++; score += 200; updateHud();
                     }
@@ -197,31 +166,20 @@
 
             mario.x += mario.velX; mario.y += mario.velY;
 
-            // 🎥 التمرير التلقائي للكاميرا عند تقدم ماريو للأمام (Scrolling Camera)
-            if (mario.x > cameraX + 200) cameraX = mario.x - 200;
+            if (mario.x > cameraX + 220) cameraX = mario.x - 220;
             if (cameraX < 0) cameraX = 0;
             if (cameraX > mapWidth - 512) cameraX = mapWidth - 512;
 
-            // السقوط في الحفرة وإعادة المحاولة
-            if (mario.y > canvas.height) {
-                resetGame();
-            }
+            if (mario.y > canvas.height) resetGame();
 
-            // تحديث الأعداء (Goombas) والاصطدامات
             goombas.forEach(g => {
-                if (!g.alive) return;
-                g.x += g.speed;
-                
-                // ارتداد العدو إذا لمس أنبوب أو حافة ماب
+                if (!g.alive) return; g.x += g.speed;
                 if (g.x < 0 || g.x > mapWidth) g.speed = -g.speed;
 
-                // 1. معس العدو عند القفز فوق رأسه مباشرة ويموت
                 if (mario.x < g.x + g.width && mario.x + mario.width > g.x &&
                     mario.y + mario.height <= g.y + 8 && mario.y + mario.height + mario.velY >= g.y) {
-                    g.alive = false; mario.velY = -6; score += 100; updateHud(); // ارتداد ماريو للأعلى بعد المعس
-                }
-                // 2. إذا لمس الفطر ماريو من الجانب (خسارة وإعادة)
-                else if (mario.x < g.x + g.width && mario.x + mario.width > g.x &&
+                    g.alive = false; mario.velY = -6; score += 100; updateHud();
+                } else if (mario.x < g.x + g.width && mario.x + mario.width > g.x &&
                          mario.y < g.y + g.height && mario.y + mario.height > g.y) {
                     resetGame();
                 }
@@ -241,8 +199,11 @@
 
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawMap();
-            drawMario();
+            // التأكد من تحميل لوحة الصور قبل الرندرة
+            if (spriteSheet.complete) {
+                drawMap();
+                drawMario();
+            }
             update();
             requestAnimationFrame(gameLoop);
         }
