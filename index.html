@@ -1,287 +1,248 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ماريو بالبشت - الملحمة الكلاسيكية</title>
+    <title>Super Mario Bros - Retro Replica</title>
     <style>
         body {
-            margin: 0; background: #5c94fc; /* نفس لون سماء ماريو الكلاسيكية الأزرق */
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 100vh; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
         }
-        #game-container { position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         #hud {
-            display: flex; justify-content: space-between; width: 256px; /* مقاس شاشات الأركيد القديمة */
-            background: #000; color: #fff; padding: 8px 15px; box-sizing: border-box;
-            font-size: 14px; font-weight: bold; font-family: monospace; border: 4px solid #fff; border-bottom: none;
+            display: flex;
+            justify-content: space-between;
+            width: 512px;
+            background: #5c94fc;
+            color: #fff;
+            padding: 10px 20px;
+            box-sizing: border-box;
+            font-size: 18px;
+            font-weight: bold;
+            border: 4px solid #fff;
+            border-bottom: none;
         }
-        canvas { background: #5c94fc; display: block; border: 4px solid #fff; }
-        
-        /* متجر خيمة التاجر الكلاسيكي */
-        #shop-ui {
-            display: none; position: absolute; top: 60px; left: 20px; width: 216px;
-            background: #000; border: 3px solid #fcfc00; padding: 10px; box-sizing: border-box;
-            color: #fff; font-family: monospace; font-size: 11px; z-index: 100;
+        canvas {
+            background: #5c94fc; /* اللون الأزرق الرسمي لسماء ماريو الكلاسيكية */
+            display: block;
+            border: 4px solid #fff;
+            image-rendering: pixelated; /* الحفاظ على حدة البكسل بدون تغبيش */
         }
-        #shop-ui h3 { margin: 0 0 10px 0; color: #fcfc00; text-align: center; font-size: 14px; }
-        .shop-row { display: flex; justify-content: space-between; margin: 8px 0; align-items: center; }
-        .shop-row button { background: #fcfc00; border: none; padding: 2px 6px; font-weight: bold; cursor: pointer; }
-        .shop-row button:disabled { background: #555; color: #aaa; }
     </style>
 </head>
 <body>
 
     <div id="hud">
         <div>MARIO<br><span id="score-txt">000000</span></div>
-        <div>💰<br>x<span id="gold-txt">00</span></div>
-        <div>WORLD<br><span>1-1</span></div>
-        <div>HP<br>x<span id="hp-txt">3</span></div>
+        <div>🪙<br>x<span id="coin-txt">00</span></div>
+        <div>WORLD<br>1-1</div>
+        <div>TIME<br>365</div>
     </div>
 
-    <div id="game-container">
-        <div id="shop-ui">
-            <h3>🏪 MERCHAND TENT</h3>
-            <div class="shop-row">
-                <span>[1] DATES (HP+1)</span>
-                <button onclick="buyItem('hp', 5)">5 COIN</button>
-            </div>
-            <div class="shop-row">
-                <span>[2] SHIELD (MAX HP)</span>
-                <button id="sh-btn" onclick="buyItem('shield', 15)">15 COIN</button>
-            </div>
-            <div style="text-align:center; margin-top:10px; color:#aaa;">[اضغط F للإغلاق]</div>
-        </div>
-
-        <canvas id="gameCanvas" width="256" height="224"></canvas>
-    </div>
+    <canvas id="marioCanvas" width="512" height="448"></canvas>
 
     <script>
-        const canvas = document.getElementById("gameCanvas");
+        const canvas = document.getElementById("marioCanvas");
         const ctx = canvas.getContext("2d");
-        // تفعيل رندرة البكسل النظيفة الحادة بدون تغبيش (Retro Pixel Perfect)
         ctx.imageSmoothingEnabled = false;
 
-        let gold = 0;
+        let coins = 0;
         let score = 0;
-        let hp = 3;
-        let maxHp = 3;
-        let isShopOpen = false;
-
-        // فيزياء ماريو الدقيقة (ثقل زوايا القفز والاحتكاك)
         let cameraX = 0;
-        const mapWidth = 1600;
-        const gravity = 0.38;
+        const mapWidth = 3000;
+
+        // فيزياء ماريو الكلاسيكية الدقيقة
+        const gravity = 0.45;
         const friction = 0.85;
         const keys = [];
 
-        const player = {
-            x: 40, y: 100, width: 12, height: 16,
-            velX: 0, velY: 0, speed: 1.8, jumpForce: 7.2,
+        const mario = {
+            x: 80, y: 200, width: 24, height: 32,
+            velX: 0, velY: 0, speed: 3.5, jumpForce: 13,
             grounded: false, direction: 'right'
         };
 
-        // ماب ماريو كلاسيكي: أرضية، وبلوكات طوب، وبلوكات تفاعلية [?]
+        // الماب الأصلي: الأرضية، البلوكات الطوبية، وبلوكات علامات الاستفهام [?]
         const platforms = [
-            { x: 0, y: 192, width: 600, height: 32, type: 'ground' }, // الأرضية الأولى
-            { x: 650, y: 192, width: 400, height: 32, type: 'ground' }, // حفرة في النص زي ماريو
-            { x: 1100, y: 192, width: 500, height: 32, type: 'ground' }, // الأرضية الأخيرة
-            
-            // بلوكات معلقة طراز ماريو (طوب وعلامات استفهام)
-            { x: 80, y: 120, width: 16, height: 16, type: 'brick' },
-            { x: 96, y: 120, width: 16, height: 16, type: 'box', hasCoin: true, hit: false }, // بلوك الذهب [?]
-            { x: 112, y: 120, width: 16, height: 16, type: 'brick' },
-            
-            { x: 200, y: 100, width: 16, height: 16, type: 'box', hasCoin: true, hit: false },
-            { x: 216, y: 100, width: 16, height: 16, type: 'box', hasCoin: true, hit: false },
-            
-            { x: 450, y: 130, width: 48, height: 16, type: 'brick' }
+            // الأرضيات الممتدة
+            { x: 0, y: 384, width: 900, height: 64, type: 'ground' },
+            { x: 1000, y: 384, width: 800, height: 64, type: 'ground' }, // حفرة ماريو الشهيرة
+            { x: 1900, y: 384, width: 1100, height: 64, type: 'ground' },
+
+            // بلوكات العالم 1-1 الشهيرة
+            { x: 300, y: 256, width: 32, height: 32, type: 'brick' },
+            { x: 332, y: 256, width: 32, height: 32, type: 'box', hasCoin: true, hit: false },
+            { x: 364, y: 256, width: 32, height: 32, type: 'brick' },
+            { x: 396, y: 256, width: 32, height: 32, type: 'box', hasCoin: true, hit: false },
+            { x: 428, y: 256, width: 32, height: 32, type: 'brick' },
+            { x: 364, y: 140, width: 32, height: 32, type: 'box', hasCoin: true, hit: false }, // البلوك المرتفع
+
+            // الأنابيب الخضراء (Pipes)
+            { x: 600, y: 320, width: 64, height: 64, type: 'pipe' },
+            { x: 1300, y: 288, width: 64, height: 96, type: 'pipe' }
         ];
 
-        // خيمة التاجر بكسل آرت داخل الماب
-        const merchantTent = { x: 320, y: 144, width: 32, height: 48, near: false };
-
-        // الأعداء (الفطر الكلاسيكي يمشون ويسقطون في الحفر)
-        let enemies = [
-            { x: 150, y: 176, width: 12, height: 16, speed: 0.5, alive: true },
-            { x: 380, y: 176, width: 12, height: 16, speed: -0.5, alive: true },
-            { x: 750, y: 176, width: 12, height: 16, speed: 0.6, alive: true }
+        // الأعداء (الفطر البني الغاضب - Goombas)
+        let goombas = [
+            { x: 450, y: 352, width: 32, height: 32, speed: 1.2, alive: true },
+            { x: 800, y: 352, width: 32, height: 32, speed: -1.2, alive: true },
+            { x: 1450, y: 352, width: 32, height: 32, speed: 1.5, alive: true }
         ];
-
-        function buyItem(type, price) {
-            if (gold >= price) {
-                if (type === 'hp' && hp < maxHp) {
-                    gold -= price; hp++;
-                } else if (type === 'shield' && maxHp === 3) {
-                    gold -= price; maxHp = 4; hp = 4;
-                    document.getElementById("sh-btn").innerText = "SOLD";
-                    document.getElementById("sh-btn").disabled = true;
-                } else { return; }
-                updateHud();
-            } else { alert("NO COINS!"); }
-        }
 
         function updateHud() {
-            document.getElementById("gold-txt").innerText = gold.toString().padStart(2, '0');
+            document.getElementById("coin-txt").innerText = coins.toString().padStart(2, '0');
             document.getElementById("score-txt").innerText = score.toString().padStart(6, '0');
-            document.getElementById("hp-txt").innerText = hp;
         }
 
-        // رسم البطل بطراز الـ 8-bit بكسل آرت (شماغ، بشت يطير، ثوب)
-        function drawPlayer() {
-            ctx.save(); ctx.translate(-cameraX, 0);
+        // رسم ماريو الأصلي بالبكسل (قبعة حمراء، بدلة زرقاء)
+        function drawMario() {
+            ctx.save();
+            ctx.translate(-cameraX, 0);
 
-            // 1. الشماغ الأحمر البكسلي وعقال فوقه
-            ctx.fillStyle = "#ff4444"; ctx.fillRect(player.x + 2, player.y, 9, 5);
-            ctx.fillStyle = "#000000"; ctx.fillRect(player.x + 3, player.y + 1, 7, 1);
+            // القبعة الحمراء
+            ctx.fillStyle = "#ff0000"; ctx.fillRect(mario.x + 4, mario.y, 18, 6);
+            ctx.fillRect(mario.x + 8, mario.y + 4, 14, 4);
 
-            // 2. الوجه والعيون النقطية
-            ctx.fillStyle = "#ffcccb"; ctx.fillRect(player.x + 3, player.y + 4, 7, 4);
-            ctx.fillStyle = "#000000"; 
-            let eyeX = player.direction === 'right' ? player.x + 7 : player.x + 4;
-            ctx.fillRect(eyeX, player.y + 5, 1, 2); // نقطة العين
+            // الوجه والشارب الأسود الشهير
+            ctx.fillStyle = "#ffcca3"; ctx.fillRect(mario.x + 6, mario.y + 8, 14, 8);
+            ctx.fillStyle = "#000000"; ctx.fillRect(mario.x + 14, mario.y + 10, 6, 4); // الشارب
 
-            // 3. الثوب الأبيض والبشت الحساوي الأسود اللي وراه
-            ctx.fillStyle = "#111111"; ctx.fillRect(player.x + 1, player.y + 8, 10, 8); // البشت
-            ctx.fillStyle = "#ffffff"; ctx.fillRect(player.x + 3, player.y + 8, 6, 8);  // الثوب بالنص
-            ctx.fillStyle = "#d4af37"; ctx.fillRect(player.x + 3, player.y + 8, 1, 8);  // زري ذهبي على الأطراف
-            ctx.fillRect(player.x + 8, player.y + 8, 1, 8);
+            // البدلة والملابس (الأزرق والأحمر الكلاسيكي)
+            ctx.fillStyle = "#0000ff"; ctx.fillRect(mario.x + 4, mario.y + 16, 16, 12); // الملابس الزرقاء
+            ctx.fillStyle = "#ff0000"; ctx.fillRect(mario.x + 2, mario.y + 16, 3, 10);  // الأكمام الحمراء
+            ctx.fillRect(mario.x + 19, mario.y + 16, 3, 10);
+
+            // الحذاء البني
+            ctx.fillStyle = "#8b4513";
+            ctx.fillRect(mario.x + 2, mario.y + 28, 8, 4);
+            ctx.fillRect(mario.x + 14, mario.y + 28, 8, 4);
 
             ctx.restore();
         }
 
+        // رسم البيئة، البلوكات والأعداء كما في اللعبة الأصلية
         function drawMap() {
-            ctx.save(); ctx.translate(-cameraX, 0);
+            ctx.save();
+            ctx.translate(-cameraX, 0);
 
-            // رسم المنصات والبلوكات
             platforms.forEach(p => {
                 if (p.type === 'ground') {
-                    ctx.fillStyle = "#d88038"; ctx.fillRect(p.x, p.y, p.width, p.height); // طين أرضي غامق
-                    ctx.fillStyle = "#24bc00"; ctx.fillRect(p.x, p.y, p.width, 4);       // عشب أخضر ناعم ماريو
+                    ctx.fillStyle = "#d84418"; ctx.fillRect(p.x, p.y, p.width, p.height); // الأرضية البنية
+                    ctx.fillStyle = "#fc9c4c"; ctx.fillRect(p.x, p.y, p.width, 6);        // التفاصيل الفاتحة للأرض
                 } else if (p.type === 'brick') {
-                    ctx.fillStyle = "#b84418"; ctx.fillRect(p.x, p.y, p.width, p.height); // طوب ماريو البني
-                    ctx.fillStyle = "#000"; ctx.strokeRect(p.x, p.y, p.width, p.height);
+                    ctx.fillStyle = "#b84418"; ctx.fillRect(p.x, p.y, p.width, p.height); // قوالب الطوب
+                    ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(p.x, p.y, p.width, p.height);
                 } else if (p.type === 'box') {
-                    // بلوك [?] المفاجآت
-                    ctx.fillStyle = p.hit ? "#885418" : "#fc9c24"; ctx.fillRect(p.x, p.y, p.width, p.height);
-                    ctx.fillStyle = "#000"; ctx.strokeRect(p.x, p.y, p.width, p.height);
-                    if (!p.hit) { // رسم علامة الاستفهام بكسل
-                        ctx.fillStyle = "#fff"; ctx.fillRect(p.x + 7, p.y + 4, 3, 2);
-                        ctx.fillRect(p.x + 7, p.y + 8, 2, 2);
+                    // صندوق المفاجآت [?]
+                    ctx.fillStyle = p.hit ? "#7c7c7c" : "#fc9c24"; ctx.fillRect(p.x, p.y, p.width, p.height);
+                    ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(p.x, p.y, p.width, p.height);
+                    if (!p.hit) {
+                        ctx.fillStyle = "#fff"; ctx.font = "bold 20px monospace"; ctx.fillText("?", p.x + 10, p.y + 24);
                     }
+                } else if (p.type === 'pipe') {
+                    // الأنبوب الأخضر الكلاسيكي
+                    ctx.fillStyle = "#00a800"; ctx.fillRect(p.x, p.y, p.width, p.height);
+                    ctx.fillStyle = "#00d800"; ctx.fillRect(p.x, p.y, 8, p.height); // خط لمعان الأنبوب
+                    ctx.strokeStyle = "#000"; ctx.lineWidth = 3; ctx.strokeRect(p.x, p.y, p.width, p.height);
                 }
             });
 
-            // رسم خيمة التاجر بكسل آرت في الماب ⛺
-            ctx.fillStyle = "#f8b878"; // لون قماش الخيمة الكلاسيكي
-            ctx.beginPath(); ctx.moveTo(merchantTent.x, merchantTent.y + merchantTent.height);
-            ctx.lineTo(merchantTent.x + merchantTent.width/2, merchantTent.y);
-            ctx.lineTo(merchantTent.x + merchantTent.width, merchantTent.y + merchantTent.height); ctx.fill();
-            ctx.fillStyle = "#000"; ctx.fillRect(merchantTent.x + 10, merchantTent.y + 24, 12, 24); // الباب
-
-            // تلميح تفاعلي كلاسيكي فوق الخيمة
-            if (merchantTent.near) {
-                ctx.fillStyle = "#fff"; ctx.font = "8px monospace";
-                ctx.fillText("SHOP [F]", merchantTent.x + 2, merchantTent.y - 4);
-            }
-
-            // رسم أعداء الفطر (بكسل بني بسيط يمشون)
-            enemies.forEach(e => {
-                if (!e.alive) return;
-                ctx.fillStyle = "#a81000"; ctx.fillRect(e.x + 2, e.y, e.width - 4, 6); // رأس الفطر
-                ctx.fillStyle = "#ececec"; ctx.fillRect(e.x + 3, e.y + 6, e.width - 6, 10); // جسمه
-                ctx.fillStyle = "#000"; ctx.fillRect(e.x + 4, e.y + 8, 1, 3); ctx.fillRect(e.x + 7, e.y + 8, 1, 3); // عيون بكسل
+            // رسم أعداء الفطر (Goombas)
+            goombas.forEach(g => {
+                if (!g.alive) return;
+                ctx.fillStyle = "#a81000"; ctx.fillRect(g.x, g.y, g.width, 16); // رأس الفطر البني
+                ctx.fillStyle = "#fce4a0"; ctx.fillRect(g.x + 4, g.y + 16, g.width - 8, 16); // الجسم السفلي
+                ctx.fillStyle = "#000"; ctx.fillRect(g.x + 8, g.y + 6, 4, 6); ctx.fillRect(g.x + 20, g.y + 6, 4, 6); // العيون الغاضبة
             });
 
             ctx.restore();
         }
 
         function update() {
-            if (isShopOpen) return;
+            // أزرار الحركة والتنقل المستوحاة من نينتندو (A, D أو الأسهم)
+            if (keys[65] || keys[37]) { mario.velX = -mario.speed; mario.direction = 'left'; }
+            if (keys[68] || keys[39]) { mario.velX = mario.speed; mario.direction = 'right'; }
 
-            // تحريكات الكيبورد سلاسة ريترو (A و D)
-            if (keys[65] || keys[37]) { player.velX = -player.speed; player.direction = 'left'; }
-            if (keys[68] || keys[39]) { player.velX = player.speed; player.direction = 'right'; }
-
-            // القفز بماريو ثقل وارتفاع ممتاز (Space)
-            if ((keys[32] || keys[38]) && !player.jumping && player.grounded) {
-                player.jumping = true; player.grounded = false; player.velY = -player.jumpForce;
+            // القفز الدقيق بالمسافة أو السهم العلوي
+            if ((keys[32] || keys[38]) && !mario.jumping && mario.grounded) {
+                mario.jumping = true; mario.grounded = false; mario.velY = -mario.jumpForce;
             }
 
-            player.velX *= friction; player.velY += gravity; player.grounded = false;
+            mario.velX *= friction; mario.velY += gravity; mario.grounded = false;
 
-            // كشف الاصطدام مع المنصات والبلوكات
+            // معالجة الاصطدام مع قوالب الماب
             platforms.forEach(p => {
-                // 1. الوقوف فوق البلوكات والأرضية
-                if (player.x < p.x + p.width && player.x + player.width > p.x &&
-                    player.y + player.height <= p.y + 4 && player.y + player.height + player.velY >= p.y) {
-                    player.jumping = false; player.grounded = true; player.velY = 0; player.y = p.y - player.height;
+                // 1. الوقوف فوق الأسطح والأرضيات والأنابيب
+                if (mario.x < p.x + p.width && mario.x + mario.width > p.x &&
+                    mario.y + mario.height <= p.y + 6 && mario.y + mario.height + mario.velY >= p.y) {
+                    mario.jumping = false; mario.grounded = true; mario.velY = 0; mario.y = p.y - mario.height;
                 }
-                
-                // 2. 💥 الميزة الأهم بماريو: ضرب البلوك برأس البطل من الأسفل!
-                if (player.x < p.x + p.width && player.x + player.width > p.x &&
-                    player.y >= p.y + p.height - 4 && player.y + player.velY <= p.y + p.height) {
-                    player.velY = 1; // يرتد لأسفل بعد الاصطدام
+
+                // 2. ضرب البلوكات بالرأس من الأسفل لإخراج الذهب الكلاسيكي!
+                if (mario.x < p.x + p.width && mario.x + mario.width > p.x &&
+                    mario.y >= p.y + p.height - 6 && mario.y + mario.velY <= p.y + p.height) {
+                    mario.velY = 2; // الارتداد للأسفل فوراً بعد النطح
                     if (p.type === 'box' && !p.hit && p.hasCoin) {
-                        p.hit = true; gold++; score += 200; updateHud(); // كسب ذهب من البلوك!
+                        p.hit = true; coins++; score += 200; updateHud();
                     }
                 }
             });
 
-            player.x += player.velX; player.y += player.velY;
+            mario.x += mario.velX; mario.y += mario.velY;
 
-            // 🎥 الكاميرا الكلاسيكية لماريو (تتحرك أفقياً فقط إذا تجاوزت ربع الشاشة)
-            if (player.x > cameraX + 120) cameraX = player.x - 120;
+            // 🎥 التمرير التلقائي للكاميرا عند تقدم ماريو للأمام (Scrolling Camera)
+            if (mario.x > cameraX + 200) cameraX = mario.x - 200;
             if (cameraX < 0) cameraX = 0;
-            if (cameraX > mapWidth - 256) cameraX = mapWidth - 256;
+            if (cameraX > mapWidth - 512) cameraX = mapWidth - 512;
 
-            // السقوط في الحفرة (خسارة وموت)
-            if (player.y > canvas.height) {
-                hp--; updateHud(); player.x = cameraX + 20; player.y = 100; player.velY = 0;
-                if (hp <= 0) { alert("GAME OVER"); hp = 3; gold = 0; score = 0; cameraX = 0; player.x = 40; updateHud(); }
+            // السقوط في الحفرة وإعادة المحاولة
+            if (mario.y > canvas.height) {
+                resetGame();
             }
 
-            // فحص القرب من خيمة التاجر
-            if (player.x + player.width > merchantTent.x && player.x < merchantTent.x + merchantTent.width && player.y + player.height > merchantTent.y) {
-                merchantTent.near = true;
-            } else { merchantTent.near = false; }
+            // تحديث الأعداء (Goombas) والاصطدامات
+            goombas.forEach(g => {
+                if (!g.alive) return;
+                g.x += g.speed;
+                
+                // ارتداد العدو إذا لمس أنبوب أو حافة ماب
+                if (g.x < 0 || g.x > mapWidth) g.speed = -g.speed;
 
-            // تحريك أعداء الفطر واصطدامهم بالبطل (تمعسهم أو يلمسوك)
-            enemies.forEach(e => {
-                if (!e.alive) return;
-                e.x += e.speed;
-                // حماية سقوط الأعداء أو ارتدادهم مع الماب
-                if (e.x < 0 || e.x > mapWidth) e.speed = -e.speed;
-
-                // 1. القفز فوق رأس الفطر وموته كـ ماريو!
-                if (player.x < e.x + e.width && player.x + player.width > e.x &&
-                    player.y + player.height <= e.y + 6 && player.y + player.height + player.velY >= e.y) {
-                    e.alive = false; player.velY = -4; score += 100; updateHud(); // ارتداد قفزة ممتع للاعب بعد المعس
+                // 1. معس العدو عند القفز فوق رأسه مباشرة ويموت
+                if (mario.x < g.x + g.width && mario.x + mario.width > g.x &&
+                    mario.y + mario.height <= g.y + 8 && mario.y + mario.height + mario.velY >= g.y) {
+                    g.alive = false; mario.velY = -6; score += 100; updateHud(); // ارتداد ماريو للأعلى بعد المعس
                 }
-                // 2. لمس الفطر للاعب من الجوانب (ضرر ونقص دم)
-                else if (player.x < e.x + e.width && player.x + player.width > e.x &&
-                         player.y < e.y + e.height && player.y + player.height > e.y) {
-                    hp--; updateHud();
-                    player.x -= player.direction === 'right' ? 30 : -30; // ارتداد لاعب
-                    if (hp <= 0) { alert("GAME OVER"); hp = 3; gold = 0; score = 0; cameraX = 0; player.x = 40; updateHud(); }
+                // 2. إذا لمس الفطر ماريو من الجانب (خسارة وإعادة)
+                else if (mario.x < g.x + g.width && mario.x + mario.width > g.x &&
+                         mario.y < g.y + g.height && mario.y + mario.height > g.y) {
+                    resetGame();
                 }
             });
         }
 
-        // رصد الأزرار الكلاسيكية
-        window.addEventListener("keydown", e => {
-            keys[e.keyCode] = true;
-            if (e.keyCode === 70 && merchantTent.near) { // زر F لفتح وإغلاق خيمة التاجر تلقائياً
-                isShopOpen = !isShopOpen;
-                document.getElementById("shop-ui").style.display = isShopOpen ? "block" : "none";
-            }
-        });
+        function resetGame() {
+            coins = 0; score = 0; cameraX = 0;
+            mario.x = 80; mario.y = 200; mario.velX = 0; mario.velY = 0;
+            goombas.forEach(g => g.alive = true);
+            platforms.forEach(p => { if (p.type === 'box') p.hit = false; });
+            updateHud();
+        }
+
+        window.addEventListener("keydown", e => keys[e.keyCode] = true);
         window.addEventListener("keyup", e => keys[e.keyCode] = false);
 
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawMap();
-            drawPlayer();
+            drawMario();
             update();
             requestAnimationFrame(gameLoop);
         }
