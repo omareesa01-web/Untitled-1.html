@@ -3,429 +3,290 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>فتوحات الدار - أركيد أسطوري</title>
+    <title>ماريو بالبشت - الملحمة الكلاسيكية</title>
     <style>
         body {
-            margin: 0; background: #0b0f19; color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; background: #5c94fc; /* نفس لون سماء ماريو الكلاسيكية الأزرق */
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 100vh; overflow: hidden;
+            height: 100vh; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        #game-container { position: relative; width: 800px; }
+        #game-container { position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         #hud {
-            display: flex; justify-content: space-between; width: 800px;
-            background: #111625; padding: 12px 20px; box-sizing: border-box;
-            border: 2px solid #242b3d; border-bottom: none; font-size: 18px; font-weight: bold;
+            display: flex; justify-content: space-between; width: 256px; /* مقاس شاشات الأركيد القديمة */
+            background: #000; color: #fff; padding: 8px 15px; box-sizing: border-box;
+            font-size: 14px; font-weight: bold; font-family: monospace; border: 4px solid #fff; border-bottom: none;
         }
-        .stat { color: #d4af37; }
-        #canvas-wrapper { position: relative; width: 800px; height: 400px; }
-        canvas { background: #090d16; display: block; border: 2px solid #242b3d; }
+        canvas { background: #5c94fc; display: block; border: 4px solid #fff; }
         
-        /* لوحة خيمة التاجر التفاعلية */
-        #shop-modal {
-            display: none; position: absolute; top: 50px; left: 150px; width: 500px;
-            background: rgba(17, 22, 37, 0.96); border: 3px solid #d4af37; border-radius: 8px;
-            padding: 20px; z-index: 100; box-sizing: border-box; box-shadow: 0 0 20px #000;
+        /* متجر خيمة التاجر الكلاسيكي */
+        #shop-ui {
+            display: none; position: absolute; top: 60px; left: 20px; width: 216px;
+            background: #000; border: 3px solid #fcfc00; padding: 10px; box-sizing: border-box;
+            color: #fff; font-family: monospace; font-size: 11px; z-index: 100;
         }
-        #shop-modal h2 { margin-top: 0; color: #d4af37; text-align: center; }
-        .shop-item {
-            display: flex; justify-content: space-between; align-items: center;
-            background: #0b0f19; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #242b3d;
-        }
-        .shop-item button {
-            background: #d4af37; border: none; padding: 6px 12px; color: #111; font-weight: bold; cursor: pointer; border-radius: 4px;
-        }
-        .close-shop { background: #fff; color: #000; padding: 5px 10px; border: none; border-radius: 4px; float: left; cursor: pointer; font-weight: bold; }
-        
-        /* لوحة النجوم والقصة */
-        #overlay-screen {
-            position: absolute; top: 0; left: 0; width: 800px; height: 400px;
-            background: rgba(9, 13, 22, 0.95); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; text-align: center; z-index: 105; border: 2px solid #242b3d;
-        }
-        #overlay-screen h2 { color: #d4af37; font-size: 32px; margin: 10px; }
-        #overlay-screen p { font-size: 18px; max-width: 600px; color: #e2e8f0; line-height: 1.6; }
-        #overlay-screen button {
-            background: #d4af37; color: #111; border: none; padding: 10px 30px;
-            font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 15px;
-        }
-        .star { color: #555; font-size: 40px; margin: 0 5px; }
-        .star.active { color: #ffcc00; text-shadow: 0 0 10px #ffcc00; }
+        #shop-ui h3 { margin: 0 0 10px 0; color: #fcfc00; text-align: center; font-size: 14px; }
+        .shop-row { display: flex; justify-content: space-between; margin: 8px 0; align-items: center; }
+        .shop-row button { background: #fcfc00; border: none; padding: 2px 6px; font-weight: bold; cursor: pointer; }
+        .shop-row button:disabled { background: #555; color: #aaa; }
     </style>
 </head>
 <body>
 
     <div id="hud">
-        <div>❤️ الصحة: <span id="hp" class="stat">3 / 3</span></div>
-        <div>🏹 الأسهم: <span id="arrows" class="stat">5</span></div>
-        <div>💰 الريالات: <span id="gold" class="stat">0</span></div>
-        <div>🗺️ العالم: <span id="world-title" class="stat">1 - فتح المصمك</span></div>
+        <div>MARIO<br><span id="score-txt">000000</span></div>
+        <div>💰<br>x<span id="gold-txt">00</span></div>
+        <div>WORLD<br><span>1-1</span></div>
+        <div>HP<br>x<span id="hp-txt">3</span></div>
     </div>
 
     <div id="game-container">
-        <div id="overlay-screen">
-            <h2 id="overlay-title">⚔️ فتوحات الدار</h2>
-            <p id="overlay-desc">استعد لبدء الملحمة التاريخية لتأسيس وتوحيد المملكة.</p>
-            <div id="stars-row" style="display:none; margin: 10px 0;">
-                <span class="star active">★</span><span class="star active">★</span><span class="star active">★</span>
+        <div id="shop-ui">
+            <h3>🏪 MERCHAND TENT</h3>
+            <div class="shop-row">
+                <span>[1] DATES (HP+1)</span>
+                <button onclick="buyItem('hp', 5)">5 COIN</button>
             </div>
-            <button id="overlay-btn" onclick="handleOverlayNext()">التالي 🐎</button>
+            <div class="shop-row">
+                <span>[2] SHIELD (MAX HP)</span>
+                <button id="sh-btn" onclick="buyItem('shield', 15)">15 COIN</button>
+            </div>
+            <div style="text-align:center; margin-top:10px; color:#aaa;">[اضغط F للإغلاق]</div>
         </div>
 
-        <div id="shop-modal">
-            <h2>🏪 خيمة التاجر (تطويرات السفر)</h2>
-            <div class="shop-item">
-                <span>🌴 التمرة الذهبية (استعادة 1 قلوب للصحة)</span>
-                <button onclick="buyItem('health', 5)">شراء (5 ريال)</button>
-            </div>
-            <div class="shop-item">
-                <span>🏹 حزمة أسهم مصقولة (+5 أسهم للعدّاد)</span>
-                <button onclick="buyItem('arrows', 3)">شراء (3 ريال)</button>
-            </div>
-            <div class="shop-item">
-                <span>🛡️ درع المصمك الأثري (زيادة الحماية لـ 4 قلوب دائمًا)</span>
-                <button id="buy-shield" onclick="buyItem('shield', 15)">شراء (15 ريال)</button>
-            </div>
-            <button class="close-shop" onclick="toggleShop(false)">إغلاق الخيمة</button>
-        </div>
-
-        <div id="canvas-wrapper">
-            <canvas id="gameCanvas" width="800" height="400"></canvas>
-        </div>
+        <canvas id="gameCanvas" width="256" height="224"></canvas>
     </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+        // تفعيل رندرة البكسل النظيفة الحادة بدون تغبيش (Retro Pixel Perfect)
         ctx.imageSmoothingEnabled = false;
 
-        let currentWorld = 1; 
-        let goldCount = 0;
-        let arrowCount = 5;
-        let health = 3;
-        let maxHealth = 3;
+        let gold = 0;
+        let score = 0;
+        let hp = 3;
+        let maxHp = 3;
         let isShopOpen = false;
-        let gameState = "story"; // story, play, cinematic
 
+        // فيزياء ماريو الدقيقة (ثقل زوايا القفز والاحتكاك)
         let cameraX = 0;
-        const mapWidth = 3200; // ماب طويل جداً وممتد كـ ماريو
-        const gravity = 0.55;
+        const mapWidth = 1600;
+        const gravity = 0.38;
         const friction = 0.85;
         const keys = [];
 
         const player = {
-            x: 100, y: 200, width: 26, height: 42,
-            velX: 0, velY: 0, speed: 4.5, jumpForce: 11.5,
-            grounded: false, direction: 'right', isAttacking: false, attackTimer: 0
+            x: 40, y: 100, width: 12, height: 16,
+            velX: 0, velY: 0, speed: 1.8, jumpForce: 7.2,
+            grounded: false, direction: 'right'
         };
 
-        // نصوص القصص لكل عالم
-        const worldStories = {
-            1: { title: "⚔️ العالم الأول: فتح المصمك", desc: "\"عجلان يحكم حصن المصمك بقبضة من حديد.. الفجر يقترب، وخطة التسلل بدأت.. استعد لفتح الرياض واستعادة هيبة الدار.\"", btn: "ابدأ التسلل 🐎" },
-            2: { title: "🌴 العالم الثاني: صمود الدرعية", desc: "\"الأسوار العظيمة محاصرة.. الإمام تركي يقود الصمود من وسط النخيل والممرات الضيقة.. دافع عن العاصمة ولا تراجع!\"", btn: "اقدِم بالصمود ⚔️" },
-            3: { title: "⛰️ العالم الثالث: تضاريس الوطن (جبال السودة)", desc: "\"مراحل جبلية مرتفعة وضبابية.. شق طريقك نحو القمة واهزم آخر الحراس لتعلن تم الفتح بنجاح!\"", btn: "اصعد للقمة 👑" }
-        };
-
-        // منصات وعناصر الماب (تتغير ديناميكياً مع كل عالم)
-        let platforms = [];
-        let enemies = [];
-        let goldCoins = [];
-        let activeArrows = [];
-        let merchantTents = []; // الخيام التفاعلية داخل الماب
-        let levelFlag = { x: 3100, y: 260, width: 30, height: 100 }; // علم نهاية الماب
-
-        function initWorld(worldNum) {
-            cameraX = 0;
-            player.x = 100; player.y = 200;
-            player.velX = 0; player.velY = 0;
-            activeArrows = [];
+        // ماب ماريو كلاسيكي: أرضية، وبلوكات طوب، وبلوكات تفاعلية [?]
+        const platforms = [
+            { x: 0, y: 192, width: 600, height: 32, type: 'ground' }, // الأرضية الأولى
+            { x: 650, y: 192, width: 400, height: 32, type: 'ground' }, // حفرة في النص زي ماريو
+            { x: 1100, y: 192, width: 500, height: 32, type: 'ground' }, // الأرضية الأخيرة
             
-            // 1. بناء المنصات للماب الطويل جداً (3200 بكسل)
-            platforms = [
-                { x: 0, y: 360, width: 3200, height: 40 } // الأرضية الثابتة
-            ];
-            // منصات عشوائية مرتفعة ماريو ستايل طول الماب
-            for (let i = 400; i < 3000; i += 400) {
-                platforms.push({ x: i, y: 250, width: 150, height: 15 });
-                platforms.push({ x: i + 200, y: 170, width: 130, height: 15 });
-            }
+            // بلوكات معلقة طراز ماريو (طوب وعلامات استفهام)
+            { x: 80, y: 120, width: 16, height: 16, type: 'brick' },
+            { x: 96, y: 120, width: 16, height: 16, type: 'box', hasCoin: true, hit: false }, // بلوك الذهب [?]
+            { x: 112, y: 120, width: 16, height: 16, type: 'brick' },
+            
+            { x: 200, y: 100, width: 16, height: 16, type: 'box', hasCoin: true, hit: false },
+            { x: 216, y: 100, width: 16, height: 16, type: 'box', hasCoin: true, hit: false },
+            
+            { x: 450, y: 130, width: 48, height: 16, type: 'brick' }
+        ];
 
-            // 2. توزيع الخيام التفاعلية في منتصف مسافة الركض والمشي!
-            merchantTents = [
-                { x: 1000, y: 280, width: 70, height: 80, near: false },
-                { x: 2200, y: 280, width: 70, height: 80, near: false }
-            ];
+        // خيمة التاجر بكسل آرت داخل الماب
+        const merchantTent = { x: 320, y: 144, width: 32, height: 48, near: false };
 
-            // 3. توزيع الأعداء (الحراس)
-            enemies = [];
-            for (let i = 600; i < 2900; i += 500) {
-                enemies.push({ x: i, y: 320, width: 28, height: 40, speed: worldNum === 3 ? 3 : 1.8, startX: i, range: 150, alive: true });
-            }
-
-            // 4. توزيع ريالات الذهب في الجو فوق المنصات
-            goldCoins = [];
-            for (let i = 450; i < 3000; i += 250) {
-                goldCoins.push({ x: i, y: 200, collected: false });
-                goldCoins.push({ x: i + 40, y: 130, collected: false });
-            }
-        }
-
-        function handleOverlayNext() {
-            if (gameState === "story") {
-                document.getElementById("overlay-screen").style.display = "none";
-                gameState = "play";
-            } else if (gameState === "cinematic") {
-                if (currentWorld < 3) {
-                    currentWorld++;
-                    document.getElementById("world-title").innerText = currentWorld === 2 ? "2 - صمود الدرعية" : "3 - جبال السودة";
-                    showWorldStory(currentWorld);
-                } else {
-                    // فوز نهائي باللعبة كاملة
-                    currentWorld = 1; goldCount = 0; health = 3; maxHealth = 3;
-                    document.getElementById("gold").innerText = goldCount;
-                    document.getElementById("hp").innerText = "3 / 3";
-                    document.getElementById("world-title").innerText = "1 - فتح المصمك";
-                    showWorldStory(1);
-                }
-            }
-        }
-
-        function showWorldStory(worldNum) {
-            gameState = "story";
-            initWorld(worldNum);
-            document.getElementById("stars-row").style.display = "none";
-            document.getElementById("overlay-screen").style.display = "flex";
-            document.getElementById("overlay-title").innerText = worldStories[worldNum].title;
-            document.getElementById("overlay-desc").innerText = worldStories[worldNum].desc;
-            document.getElementById("overlay-btn").innerText = worldStories[worldNum].btn;
-        }
-
-        function toggleShop(open) {
-            isShopOpen = open;
-            document.getElementById("shop-modal").style.display = open ? "block" : "none";
-        }
+        // الأعداء (الفطر الكلاسيكي يمشون ويسقطون في الحفر)
+        let enemies = [
+            { x: 150, y: 176, width: 12, height: 16, speed: 0.5, alive: true },
+            { x: 380, y: 176, width: 12, height: 16, speed: -0.5, alive: true },
+            { x: 750, y: 176, width: 12, height: 16, speed: 0.6, alive: true }
+        ];
 
         function buyItem(type, price) {
-            if (goldCount >= price) {
-                if (type === 'health' && health < maxHealth) {
-                    goldCount -= price; health++;
-                } else if (type === 'arrows') {
-                    goldCount -= price; arrowCount += 5;
-                } else if (type === 'shield' && maxHealth === 3) {
-                    goldCount -= price; maxHealth = 4; health = 4;
-                    document.getElementById("buy-shield").innerText = "ممتلك 🛡️";
-                    document.getElementById("buy-shield").disabled = true;
+            if (gold >= price) {
+                if (type === 'hp' && hp < maxHp) {
+                    gold -= price; hp++;
+                } else if (type === 'shield' && maxHp === 3) {
+                    gold -= price; maxHp = 4; hp = 4;
+                    document.getElementById("sh-btn").innerText = "SOLD";
+                    document.getElementById("sh-btn").disabled = true;
                 } else { return; }
-                document.getElementById("gold").innerText = goldCount;
-                document.getElementById("hp").innerText = health + " / " + maxHealth;
-                document.getElementById("arrows").innerText = arrowCount;
-            } else { alert("الذهب لا يكفي التاجر! 💰"); }
+                updateHud();
+            } else { alert("NO COINS!"); }
         }
 
-        // الأسلوب البصري والألوان لكل عالم
-        function getWorldColors() {
-            if (currentWorld === 1) return { sky: "#0b0f16", ground: "#5c4033", leaf: "#3e2723" }; // المصمك طيني ليلي
-            if (currentWorld === 2) return { sky: "#16222f", ground: "#8b6c46", leaf: "#1e4620" }; // الدرعية نخيل طيني غامق
-            return { sky: "#1b2838", ground: "#232b35", leaf: "#526c7a" }; // السودة جبلي ضبابي
+        function updateHud() {
+            document.getElementById("gold-txt").innerText = gold.toString().padStart(2, '0');
+            document.getElementById("score-txt").innerText = score.toString().padStart(6, '0');
+            document.getElementById("hp-txt").innerText = hp;
         }
 
+        // رسم البطل بطراز الـ 8-bit بكسل آرت (شماغ، بشت يطير، ثوب)
         function drawPlayer() {
             ctx.save(); ctx.translate(-cameraX, 0);
 
-            // شماغ، وجه، وعين البكسل
-            ctx.fillStyle = "#e63946"; ctx.fillRect(player.x + 3, player.y, 20, 12);
-            ctx.fillStyle = "#111"; ctx.fillRect(player.x + 5, player.y + 2, 16, 3);
-            ctx.fillStyle = "#ffdbac"; ctx.fillRect(player.x + 5, player.y + 8, 16, 7);
-            ctx.fillStyle = "#000"; 
-            let eyeOffset = player.direction === 'right' ? 3 : 0;
-            ctx.fillRect(player.x + 7 + eyeOffset, player.y + 9, 2, 3);
-            ctx.fillRect(player.x + 12 + eyeOffset, player.y + 9, 2, 3);
+            // 1. الشماغ الأحمر البكسلي وعقال فوقه
+            ctx.fillStyle = "#ff4444"; ctx.fillRect(player.x + 2, player.y, 9, 5);
+            ctx.fillStyle = "#000000"; ctx.fillRect(player.x + 3, player.y + 1, 7, 1);
 
-            // البشت الفخم
-            ctx.fillStyle = "#1c1c1c"; ctx.fillRect(player.x, player.y + 15, 26, 23);
-            ctx.fillStyle = "#d4af37"; ctx.fillRect(player.x + 6, player.y + 15, 2, 23);
-            ctx.fillRect(player.x + 18, player.y + 15, 2, 23);
+            // 2. الوجه والعيون النقطية
+            ctx.fillStyle = "#ffcccb"; ctx.fillRect(player.x + 3, player.y + 4, 7, 4);
+            ctx.fillStyle = "#000000"; 
+            let eyeX = player.direction === 'right' ? player.x + 7 : player.x + 4;
+            ctx.fillRect(eyeX, player.y + 5, 1, 2); // نقطة العين
 
-            // سيف Hollow Knight الوميضي الكفو
-            if (player.isAttacking) {
-                ctx.fillStyle = "rgba(230, 242, 255, 0.9)";
-                if (player.direction === 'right') ctx.fillRect(player.x + 26, player.y + 14, 32, 14);
-                else ctx.fillRect(player.x - 32, player.y + 14, 32, 14);
-            }
+            // 3. الثوب الأبيض والبشت الحساوي الأسود اللي وراه
+            ctx.fillStyle = "#111111"; ctx.fillRect(player.x + 1, player.y + 8, 10, 8); // البشت
+            ctx.fillStyle = "#ffffff"; ctx.fillRect(player.x + 3, player.y + 8, 6, 8);  // الثوب بالنص
+            ctx.fillStyle = "#d4af37"; ctx.fillRect(player.x + 3, player.y + 8, 1, 8);  // زري ذهبي على الأطراف
+            ctx.fillRect(player.x + 8, player.y + 8, 1, 8);
+
             ctx.restore();
         }
 
-        function drawEntities() {
+        function drawMap() {
             ctx.save(); ctx.translate(-cameraX, 0);
-            let colors = getWorldColors();
 
-            // رسم المنصات عبر الماب الطويل
+            // رسم المنصات والبلوكات
             platforms.forEach(p => {
-                ctx.fillStyle = colors.ground; ctx.fillRect(p.x, p.y, p.width, p.height);
-                ctx.fillStyle = colors.leaf; ctx.fillRect(p.x, p.y, p.width, 5);
-            });
-
-            // رسم خيام التاجر الـ 2 الموزعة وسط الماب ⛺
-            merchantTents.forEach(t => {
-                ctx.fillStyle = "#c2b280"; // قماش الخيمة الصحراوي
-                ctx.beginPath(); ctx.moveTo(t.x, t.y + t.height); ctx.lineTo(t.x + t.width/2, t.y); ctx.lineTo(t.x + t.width, t.y + t.height); ctx.fill();
-                ctx.fillStyle = "#4a3c31"; // بوابة الخيمة السوداء المفتوحة
-                ctx.fillRect(t.x + t.width/2 - 12, t.y + t.height - 35, 24, 35);
-                
-                if (t.near) { // تلميح تفاعلي فوق الخيمة
-                    ctx.fillStyle = "#fff"; ctx.font = "bold 13px sans-serif";
-                    ctx.fillText("🏪 خيمة تاجر [اضغط F]", t.x - 15, t.y - 15);
+                if (p.type === 'ground') {
+                    ctx.fillStyle = "#d88038"; ctx.fillRect(p.x, p.y, p.width, p.height); // طين أرضي غامق
+                    ctx.fillStyle = "#24bc00"; ctx.fillRect(p.x, p.y, p.width, 4);       // عشب أخضر ناعم ماريو
+                } else if (p.type === 'brick') {
+                    ctx.fillStyle = "#b84418"; ctx.fillRect(p.x, p.y, p.width, p.height); // طوب ماريو البني
+                    ctx.fillStyle = "#000"; ctx.strokeRect(p.x, p.y, p.width, p.height);
+                } else if (p.type === 'box') {
+                    // بلوك [?] المفاجآت
+                    ctx.fillStyle = p.hit ? "#885418" : "#fc9c24"; ctx.fillRect(p.x, p.y, p.width, p.height);
+                    ctx.fillStyle = "#000"; ctx.strokeRect(p.x, p.y, p.width, p.height);
+                    if (!p.hit) { // رسم علامة الاستفهام بكسل
+                        ctx.fillStyle = "#fff"; ctx.fillRect(p.x + 7, p.y + 4, 3, 2);
+                        ctx.fillRect(p.x + 7, p.y + 8, 2, 2);
+                    }
                 }
             });
 
-            // رسم حراس البكسل
+            // رسم خيمة التاجر بكسل آرت في الماب ⛺
+            ctx.fillStyle = "#f8b878"; // لون قماش الخيمة الكلاسيكي
+            ctx.beginPath(); ctx.moveTo(merchantTent.x, merchantTent.y + merchantTent.height);
+            ctx.lineTo(merchantTent.x + merchantTent.width/2, merchantTent.y);
+            ctx.lineTo(merchantTent.x + merchantTent.width, merchantTent.y + merchantTent.height); ctx.fill();
+            ctx.fillStyle = "#000"; ctx.fillRect(merchantTent.x + 10, merchantTent.y + 24, 12, 24); // الباب
+
+            // تلميح تفاعلي كلاسيكي فوق الخيمة
+            if (merchantTent.near) {
+                ctx.fillStyle = "#fff"; ctx.font = "8px monospace";
+                ctx.fillText("SHOP [F]", merchantTent.x + 2, merchantTent.y - 4);
+            }
+
+            // رسم أعداء الفطر (بكسل بني بسيط يمشون)
             enemies.forEach(e => {
                 if (!e.alive) return;
-                ctx.fillStyle = "#475569"; ctx.fillRect(e.x, e.y, e.width, e.height);
-                ctx.fillStyle = "#ff4444"; ctx.fillRect(e.x + (e.speed > 0 ? 20 : 4), e.y + 8, 4, 4);
+                ctx.fillStyle = "#a81000"; ctx.fillRect(e.x + 2, e.y, e.width - 4, 6); // رأس الفطر
+                ctx.fillStyle = "#ececec"; ctx.fillRect(e.x + 3, e.y + 6, e.width - 6, 10); // جسمه
+                ctx.fillStyle = "#000"; ctx.fillRect(e.x + 4, e.y + 8, 1, 3); ctx.fillRect(e.x + 7, e.y + 8, 1, 3); // عيون بكسل
             });
-
-            // ريالات الذهب والأسهم
-            goldCoins.forEach(c => {
-                if (c.collected) return;
-                ctx.fillStyle = "#d4af37"; ctx.beginPath(); ctx.arc(c.x, c.y, 7, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = "#fff"; ctx.fillRect(c.x-1, c.y-1, 3, 3);
-            });
-            ctx.fillStyle = "#fff"; activeArrows.forEach(a => { ctx.fillRect(a.x, a.y, 14, 3); });
-
-            // رسم سارية وعلم نهاية المهمة 🇸🇦
-            ctx.fillStyle = "#718096"; ctx.fillRect(levelFlag.x, levelFlag.y, 6, levelFlag.height);
-            ctx.fillStyle = "#1e4620"; ctx.fillRect(levelFlag.x + 6, levelFlag.y, 45, 30); // علم أخضر
-            ctx.fillStyle = "#fff"; ctx.fillRect(levelFlag.x + 18, levelFlag.y + 12, 20, 4); // بكسل يمثل السيف على العلم
 
             ctx.restore();
         }
 
         function update() {
-            if (isShopOpen || gameState !== "play") return;
+            if (isShopOpen) return;
 
-            if (keys[65]) { player.velX = -player.speed; player.direction = 'left'; } // A
-            if (keys[68]) { player.velX = player.speed; player.direction = 'right'; }  // D
+            // تحريكات الكيبورد سلاسة ريترو (A و D)
+            if (keys[65] || keys[37]) { player.velX = -player.speed; player.direction = 'left'; }
+            if (keys[68] || keys[39]) { player.velX = player.speed; player.direction = 'right'; }
 
-            if (keys[32] && !player.jumping && player.grounded) {
+            // القفز بماريو ثقل وارتفاع ممتاز (Space)
+            if ((keys[32] || keys[38]) && !player.jumping && player.grounded) {
                 player.jumping = true; player.grounded = false; player.velY = -player.jumpForce;
             }
 
             player.velX *= friction; player.velY += gravity; player.grounded = false;
 
+            // كشف الاصطدام مع المنصات والبلوكات
             platforms.forEach(p => {
+                // 1. الوقوف فوق البلوكات والأرضية
                 if (player.x < p.x + p.width && player.x + player.width > p.x &&
-                    player.y + player.height <= p.y + 8 && player.y + player.height + player.velY >= p.y) {
+                    player.y + player.height <= p.y + 4 && player.y + player.height + player.velY >= p.y) {
                     player.jumping = false; player.grounded = true; player.velY = 0; player.y = p.y - player.height;
+                }
+                
+                // 2. 💥 الميزة الأهم بماريو: ضرب البلوك برأس البطل من الأسفل!
+                if (player.x < p.x + p.width && player.x + player.width > p.x &&
+                    player.y >= p.y + p.height - 4 && player.y + player.velY <= p.y + p.height) {
+                    player.velY = 1; // يرتد لأسفل بعد الاصطدام
+                    if (p.type === 'box' && !p.hit && p.hasCoin) {
+                        p.hit = true; gold++; score += 200; updateHud(); // كسب ذهب من البلوك!
+                    }
                 }
             });
 
             player.x += player.velX; player.y += player.velY;
 
-            // كود الكاميرا المتقدمة لملاحقة الماب الطويل 🎥
-            cameraX = player.x - 350;
+            // 🎥 الكاميرا الكلاسيكية لماريو (تتحرك أفقياً فقط إذا تجاوزت ربع الشاشة)
+            if (player.x > cameraX + 120) cameraX = player.x - 120;
             if (cameraX < 0) cameraX = 0;
-            if (cameraX > mapWidth - 800) cameraX = mapWidth - 800;
-            if (player.x < 0) player.x = 0;
+            if (cameraX > mapWidth - 256) cameraX = mapWidth - 256;
 
-            if (player.isAttacking) {
-                player.attackTimer--; if (player.attackTimer <= 0) player.isAttacking = false;
+            // السقوط في الحفرة (خسارة وموت)
+            if (player.y > canvas.height) {
+                hp--; updateHud(); player.x = cameraX + 20; player.y = 100; player.velY = 0;
+                if (hp <= 0) { alert("GAME OVER"); hp = 3; gold = 0; score = 0; cameraX = 0; player.x = 40; updateHud(); }
             }
 
-            // فحص القرب من الخيام التفاعلية داخل الماب وسط المشي ⛺
-            merchantTents.forEach(t => {
-                if (player.x + player.width > t.x && player.x < t.x + t.width && player.y + player.height > t.y) {
-                    t.near = true;
-                } else { t.near = false; }
-            });
+            // فحص القرب من خيمة التاجر
+            if (player.x + player.width > merchantTent.x && player.x < merchantTent.x + merchantTent.width && player.y + player.height > merchantTent.y) {
+                merchantTent.near = true;
+            } else { merchantTent.near = false; }
 
-            // تحديث قنص الأسهم وموت الحارس
-            activeArrows.forEach((a, aIdx) => {
-                a.x += a.dir === 'right' ? 9 : -9;
-                enemies.forEach(e => {
-                    if (e.alive && a.x > e.x && a.x < e.x + e.width && a.y > e.y && a.y < e.y + e.height) {
-                        e.alive = false; activeArrows.splice(aIdx, 1);
-                    }
-                });
-            });
-
-            // تحركات الحراس وتلقي الضرر
+            // تحريك أعداء الفطر واصطدامهم بالبطل (تمعسهم أو يلمسوك)
             enemies.forEach(e => {
                 if (!e.alive) return;
                 e.x += e.speed;
-                if (Math.abs(e.x - e.startX) > e.range) e.speed = -e.speed;
+                // حماية سقوط الأعداء أو ارتدادهم مع الماب
+                if (e.x < 0 || e.x > mapWidth) e.speed = -e.speed;
 
-                if (player.isAttacking) {
-                    let sLeft = player.direction === 'right' ? player.x + player.width : player.x - 32;
-                    let sRight = player.direction === 'right' ? player.x + player.width + 32 : player.x;
-                    if (sRight > e.x && sLeft < e.x + e.width && player.y + player.height > e.y && player.y < e.y + e.height) {
-                        e.alive = false;
-                    }
+                // 1. القفز فوق رأس الفطر وموته كـ ماريو!
+                if (player.x < e.x + e.width && player.x + player.width > e.x &&
+                    player.y + player.height <= e.y + 6 && player.y + player.height + player.velY >= e.y) {
+                    e.alive = false; player.velY = -4; score += 100; updateHud(); // ارتداد قفزة ممتع للاعب بعد المعس
                 }
-
-                if (player.x < e.x + e.width && player.x + player.width > e.x && player.y < e.y + e.height && player.y + player.height > e.y) {
-                    health--; document.getElementById("hp").innerText = health + " / " + maxHealth;
-                    player.x -= player.direction === 'right' ? 50 : -50;
-                    if (health <= 0) {
-                        alert("عد لتجهيز التسلل والاستعداد للفتح من جديد! ⚔️");
-                        health = maxHealth; goldCount = 0; showWorldStory(currentWorld);
-                    }
+                // 2. لمس الفطر للاعب من الجوانب (ضرر ونقص دم)
+                else if (player.x < e.x + e.width && player.x + player.width > e.x &&
+                         player.y < e.y + e.height && player.y + player.height > e.y) {
+                    hp--; updateHud();
+                    player.x -= player.direction === 'right' ? 30 : -30; // ارتداد لاعب
+                    if (hp <= 0) { alert("GAME OVER"); hp = 3; gold = 0; score = 0; cameraX = 0; player.x = 40; updateHud(); }
                 }
             });
-
-            // جمع ريالات الذهب القديمة
-            goldCoins.forEach(c => {
-                if (!c.collected && player.x < c.x + 7 && player.x + player.width > c.x - 7 && player.y < c.y + 7 && player.y + player.height > c.y - 7) {
-                    c.collected = true; goldCount += 1; document.getElementById("gold").innerText = goldCount;
-                }
-            });
-
-            // 🇸🇦 شرط الفوز بالـ ماب والوصول للعلم (Cinematic Finish)
-            if (player.x + player.width >= levelFlag.x && player.y + player.height >= levelFlag.y) {
-                gameState = "cinematic";
-                document.getElementById("overlay-screen").style.display = "flex";
-                document.getElementById("stars-row").style.display = "block";
-                document.getElementById("overlay-title").innerText = "👑 تـم الـفـتـح بـنـجـاح!";
-                document.getElementById("overlay-desc").innerText = "أديت الأمانة ورفعت راية التوحيد فوق أسوار العالم " + currentWorld + ". خذ قسطاً من الراحة واستعد للتالي.";
-                document.getElementById("overlay-btn").innerText = currentWorld === 3 ? "إعادة الملحمة كاملة 🔄" : "الانتقال للعالم التالي 🇸🇦";
-            }
         }
 
+        // رصد الأزرار الكلاسيكية
         window.addEventListener("keydown", e => {
             keys[e.keyCode] = true;
-            
-            // زر F: لضرب السيف الأرضي أو فتح الخيمة إذا كنت واقف عندها ⛺
-            if (e.keyCode === 70) {
-                let insideTent = false;
-                merchantTents.forEach(t => {
-                    if (t.near) { insideTent = true; toggleShop(true); }
-                });
-                if (!insideTent && !player.isAttacking && gameState === "play") {
-                    player.isAttacking = true; player.attackTimer = 8;
-                }
-            }
-
-            // زر G: السهم بعيد المدى
-            if (e.keyCode === 71 && arrowCount > 0 && !player.isAttacking && gameState === "play") {
-                arrowCount--; document.getElementById("arrows").innerText = arrowCount;
-                activeArrows.push({ x: player.direction === 'right' ? player.x + player.width : player.x - 10, y: player.y + 18, dir: player.direction });
+            if (e.keyCode === 70 && merchantTent.near) { // زر F لفتح وإغلاق خيمة التاجر تلقائياً
+                isShopOpen = !isShopOpen;
+                document.getElementById("shop-ui").style.display = isShopOpen ? "block" : "none";
             }
         });
         window.addEventListener("keyup", e => keys[e.keyCode] = false);
 
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // تلوين السماء حسب العالم الحالي
-            ctx.fillStyle = getWorldColors().sky; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            drawEntities();
+            drawMap();
             drawPlayer();
             update();
             requestAnimationFrame(gameLoop);
         }
 
-        // إطلاق اللعبة وتشغيل العالم الأول
-        showWorldStory(1);
+        updateHud();
         gameLoop();
     </script>
 </body>
