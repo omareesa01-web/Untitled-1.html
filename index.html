@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لعبة حصن المصمك الأركيد</title>
+    <title>فتح المصمك - الفتح التاريخي</title>
     <style>
         body {
             margin: 0;
-            background: #111;
+            background: #0d1117;
             color: white;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -17,331 +17,321 @@
             height: 100vh;
             overflow: hidden;
         }
-        #ui {
-            font-size: 22px;
-            margin-bottom: 10px;
+        #story-screen {
+            position: absolute;
+            width: 800px;
+            height: 450px;
+            background: rgba(19, 24, 32, 0.95);
+            border: 3px solid #c9a054;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 30px;
+            box-sizing: border-box;
+            z-index: 100;
+        }
+        #story-screen h2 { color: #c9a054; font-size: 28px; margin-bottom: 15px; }
+        #story-screen p { font-size: 18px; line-height: 1.6; max-width: 600px; color: #e2e8f0; }
+        #story-screen button {
+            background: #c9a054; color: #131820; border: none; padding: 10px 25px;
+            font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-top: 25px;
+        }
+        #game-container { position: relative; }
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            width: 800px;
+            background: #161b22;
+            padding: 10px 20px;
+            box-sizing: border-box;
+            border: 2px solid #30363d;
+            border-bottom: none;
+            font-size: 18px;
             font-weight: bold;
-            color: #ffcc00;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         }
-        canvas {
-            border: 4px solid #fff;
-            background: #e0f6ff;
-            box-shadow: 0 0 30px rgba(0,0,0,0.7);
-        }
-        .controls {
-            margin-top: 15px;
-            font-size: 16px;
-            color: #ccc;
-            background: rgba(255,255,255,0.1);
-            padding: 8px 20px;
-            border-radius: 20px;
-        }
+        .stat { color: #c9a054; }
+        canvas { background: #0b0f14; display: block; border: 2px solid #30363d; }
     </style>
 </head>
 <body>
 
-    <div id="ui">الذهب: <span id="goldScore">0</span> | المرحلة: <span id="levelNum">1</span></div>
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
-    <div class="controls">التحكم: الأسهم (يمين/يسار) للحركة | سهم فوق للقفز | زر F لضرب السيف ⚔️</div>
+    <div id="story-screen" id="storyScreen">
+        <h2>⚔️ العالم الأول: فتح المصمك (الرياض القديمة)</h2>
+        <p>"عجلان يحكم حصن المصمك بقبضة من حديد.. الفجر يقترب، وخطة التسلل بدأت.. استعد لفتح الرياض واستعادة هيبة الدار."</p>
+        <button onclick="startGame()">ابدأ التسلل 🐎</button>
+    </div>
+
+    <div id="game-container">
+        <div id="hud">
+            <div>❤️ الصحة: <span id="hp" class="stat">3 / 3</span></div>
+            <div>🏹 الأسهم: <span id="arrows" class="stat">5</span></div>
+            <div>💰 الريالات الذهبية: <span id="gold" class="stat">0</span></div>
+        </div>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+    </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-
-        // الحفاظ على جودة البكسل الـ Retro
         ctx.imageSmoothingEnabled = false;
 
-        let gold = 0;
-        let currentLevel = 1;
+        let gameActive = false;
+        let goldCount = 0;
+        let arrowCount = 5;
+        let health = 3;
 
-        // كائن اللاعب (البطل بالبشت والشماغ)
-        const player = {
-            x: 50,
-            y: 300,
-            width: 32,
-            height: 50,
-            speed: 5,
-            velX: 0,
-            velY: 0,
-            jumping: false,
-            grounded: false,
-            isAttacking: false,
-            attackTimer: 0,
-            direction: "right" // اتجاه الوجه لضرب السيف
-        };
-
-        // الأعداء (الحراس)
-        let enemies = [
-            { x: 450, y: 320, width: 30, height: 30, speed: 2, range: 120, startX: 450 }
-        ];
-
-        // الذهب اللامع
-        let coins = [
-            { x: 200, y: 240, width: 14, height: 14, collected: false },
-            { x: 350, y: 180, width: 14, height: 14, collected: false },
-            { x: 550, y: 220, width: 14, height: 14, collected: false }
-        ];
-
-        // بوابة المصمك التاريخية
-        const gate = { x: 720, y: 260, width: 55, height: 90 };
-
-        const gravity = 0.6;
-        const friction = 0.82;
+        // فيزياء Hollow Knight وسلاسل الحركة
+        const gravity = 0.55;
+        const friction = 0.85;
         const keys = [];
 
-        // رسم البطل (بكسل آرت: شماغ أحمر، بشت أسود بزري ذهبي، ثوب أبيض)
+        // البطل بتصميمه البكسل المطور والجديد
+        const player = {
+            x: 60,
+            y: 200,
+            width: 26,
+            height: 42,
+            velX: 0,
+            velY: 0,
+            speed: 4.5,
+            jumpForce: 11.5,
+            grounded: false,
+            direction: 'right',
+            isAttacking: false,
+            attackTimer: 0,
+            isAirKicking: false
+        };
+
+        // البيئة: أسطح طينية وفوانيس الرياض القديمة
+        const platforms = [
+            { x: 0, y: 360, width: 800, height: 40, name: 'ground' }, // الأرض
+            { x: 180, y: 270, width: 140, height: 14 }, // سطح بيت طيني 1
+            { x: 400, y: 190, width: 160, height: 14 }, // سطح بيت طيني 2
+            { x: 640, y: 260, width: 120, height: 14 }  // مدخل الحصن الداخلي
+        ];
+
+        // الفوانيس المشعة في الليل
+        const lanterns = [
+            { x: 250, y: 240 },
+            { x: 480, y: 160 }
+        ];
+
+        // قطع الذهب (الريالات القديمة) للجمع
+        let goldCoins = [
+            { x: 240, y: 230, collected: false },
+            { x: 450, y: 150, collected: false },
+            { x: 500, y: 150, collected: false }
+        ];
+
+        // السهام المطلقة في الجو
+        let activeArrows = [];
+
+        function startGame() {
+            document.getElementById("story-screen").style.display = "none";
+            gameActive = true;
+        }
+
+        // رسم البطل بالبشت والشماغ وعيون البكسل الواضحة
         function drawPlayer() {
-            // الشماغ والعقال
-            ctx.fillStyle = "#ff2222"; // الشماغ الأحمر
-            ctx.fillRect(player.x + 4, player.y, 24, 12);
-            ctx.fillStyle = "#111111"; // العقال الأسود
-            ctx.fillRect(player.x + 6, player.y + 4, 20, 3);
-            ctx.fillStyle = "#ffffff"; // نقوش الشماغ البيضاء
-            ctx.fillRect(player.x + 10, player.y + 2, 12, 2);
-            
-            // الوجه واللحية
+            // الشماغ الأحمر والعقال الأسود
+            ctx.fillStyle = "#e63946"; 
+            ctx.fillRect(player.x + 3, player.y, 20, 12);
+            ctx.fillStyle = "#111"; 
+            ctx.fillRect(player.x + 5, player.y + 2, 16, 3);
+
+            // الوجه والتفاصيل
             ctx.fillStyle = "#ffdbac"; 
-            ctx.fillRect(player.x + 8, player.y + 12, 16, 10);
-            ctx.fillStyle = "#221100"; // اللحية والشارب
-            ctx.fillRect(player.x + 8, player.y + 18, 16, 4);
+            ctx.fillRect(player.x + 5, player.y + 8, 16, 7);
+            ctx.fillStyle = "#000"; // العيون
+            let eyeOffset = player.direction === 'right' ? 3 : 0;
+            ctx.fillRect(player.x + 7 + eyeOffset, player.y + 9, 2, 3);
+            ctx.fillRect(player.x + 12 + eyeOffset, player.y + 9, 2, 3);
 
-            // البشت الأسود والثوب الأبيض
-            ctx.fillStyle = "#151515"; // البشت العتيق
-            ctx.fillRect(player.x + 2, player.y + 22, 28, 28);
-            ctx.fillStyle = "#ffffff"; // الثوب الأبيض من المنتصف
-            ctx.fillRect(player.x + 12, player.y + 22, 8, 28);
-            
-            // الزري الذهبي المطرز على أطراف البشت
-            ctx.fillStyle = "#ffd700"; 
-            ctx.fillRect(player.x + 10, player.y + 22, 2, 22);
-            ctx.fillRect(player.x + 20, player.y + 22, 2, 22);
+            // البشت الفخم (العباءة تتحرك مع الحركة)
+            ctx.fillStyle = "#1f1f1f"; 
+            ctx.fillRect(player.x, player.y + 15, 26, 23);
+            // تطريز الزري الذهبي على البشت
+            ctx.fillStyle = "#d4af37";
+            ctx.fillRect(player.x + 6, player.y + 15, 2, 23);
+            ctx.fillRect(player.x + 18, player.y + 15, 2, 23);
 
-            // تأثير ضربة السيف ⚔️
-            if (player.isAttacking) {
-                ctx.fillStyle = "#dddddd"; // نصل السيف الفضي
-                if (player.direction === "right") {
-                    ctx.fillRect(player.x + 30, player.y + 24, 22, 6);
-                    ctx.fillStyle = "#ffd700"; // مقبض ذهبي
-                    ctx.fillRect(player.x + 28, player.y + 22, 3, 10);
-                } else {
-                    ctx.fillRect(player.x - 20, player.y + 24, 22, 6);
-                    ctx.fillStyle = "#ffd700";
-                    ctx.fillRect(player.x + 1, player.y + 22, 3, 10);
-                }
-            }
-        }
-
-        // رسم الحارس الصغير
-        function drawEnemies() {
-            enemies.forEach(enemy => {
-                ctx.fillStyle = "#8b5a2b"; // ملابس طينية متناسقة مع الحصن
-                ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-                ctx.fillStyle = "#444"; // خوذة حماية دائرية
-                ctx.fillRect(enemy.x + 4, enemy.y - 4, 22, 4);
-                // عين الحارس الغاضبة
-                ctx.fillStyle = "#ff0000";
-                ctx.fillRect(enemy.x + (enemy.speed > 0 ? 20 : 5), enemy.y + 6, 4, 4);
-            });
-        }
-
-        // رسم الذهب
-        function drawCoins() {
-            coins.forEach(coin => {
-                if (!coin.collected) {
-                    ctx.fillStyle = "#ffd700"; // لون الذهب اللامع
-                    ctx.beginPath();
-                    ctx.arc(coin.x + 7, coin.y + 7, 7, 0, Math.PI * 2);
-                    ctx.fill();
-                    // لمعة داخل الذهب
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(coin.x + 4, coin.y + 4, 3, 3);
-                }
-            });
-        }
-
-        // رسم البيئة وحصن المصمك في الخلفية
-        function drawBackground() {
-            // سماء وقت العصر
-            ctx.fillStyle = "#ffcc99";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // شمس الرياض الدافئة
-            ctx.fillStyle = "#ff6600";
-            ctx.beginPath();
-            ctx.arc(700, 80, 45, 0, Math.PI * 2);
-            ctx.fill();
-
-            // الأرضية الطينية الصلبة
-            ctx.fillStyle = "#cdaf95";
-            ctx.fillRect(0, 350, canvas.width, 50);
-            ctx.fillStyle = "#8b7355"; // خط تفصيلي للأرض
-            ctx.fillRect(0, 350, canvas.width, 4);
-
-            // بوابة المصمك الخشبية الكبيرة
-            ctx.fillStyle = "#5c4033"; // خشب غامق
-            ctx.fillRect(gate.x, gate.y, gate.width, gate.height);
-            ctx.fillStyle = "#8b5a2b"; // نقوش البوابة
-            ctx.fillRect(gate.x + 6, gate.y + 6, gate.width - 12, gate.height - 6);
-            // مقبض البوابة الحديدي (الحلقة)
+            // الأقدام البكسل
             ctx.fillStyle = "#111";
-            ctx.beginPath();
-            ctx.arc(gate.x + 15, gate.y + 45, 5, 0, Math.PI * 2);
-            ctx.stroke();
-        }
+            ctx.fillRect(player.x + 3, player.y + 38, 6, 4);
+            ctx.fillRect(player.x + 17, player.y + 38, 6, 4);
 
-        // تحديث حركة اللعبة والفيزياء والاصطدامات
-        function update() {
-            // تحريك يمين
-            if (keys[39] || keys[68]) { 
-                if (player.velX < player.speed) player.velX++;
-                player.direction = "right";
-            }
-            // تحريك يسار
-            if (keys[37] || keys[65]) { 
-                if (player.velX > -player.speed) player.velX--;
-                player.direction = "left";
-            }
-            // قفز
-            if (keys[38] || keys[32] || keys[87]) { 
-                if (!player.jumping && player.grounded) {
-                    player.jumping = true;
-                    player.grounded = false;
-                    player.velY = -player.speed * 2.4;
+            // تأثير هجوم السيف الأرضي (F) مع أثر ضوئي بكسل أبيض/فضي
+            if (player.isAttacking && !player.isAirKicking) {
+                ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                if (player.direction === 'right') {
+                    ctx.fillRect(player.x + 26, player.y + 16, 28, 10); // نصل السيف المضيء
+                    ctx.fillStyle = "#d4af37"; // المقبض الذهبي
+                    ctx.fillRect(player.x + 26, player.y + 14, 3, 14);
+                } else {
+                    ctx.fillRect(player.x - 28, player.y + 16, 28, 10);
+                    ctx.fillStyle = "#d4af37";
+                    ctx.fillRect(player.x - 1, player.y + 14, 3, 14);
                 }
             }
 
+            // تأثير الركلة الجوية (Air Kick)
+            if (player.isAirKicking) {
+                ctx.fillStyle = "#ffdbac";
+                if (player.direction === 'right') {
+                    ctx.fillRect(player.x + 24, player.y + 26, 12, 8);
+                } else {
+                    ctx.fillRect(player.x - 12, player.y + 26, 12, 8);
+                }
+            }
+        }
+
+        // رسم البيئة والفوانيس المشعة
+        function drawEnvironment() {
+            // رسم الفوانيس الطينية بنورها الدافئ
+            lanterns.forEach(l => {
+                // هالة الضوء الدائرية
+                let gradient = ctx.createRadialGradient(l.x+6, l.y+8, 2, l.x+6, l.y+8, 45);
+                gradient.addColorStop(0, 'rgba(212, 175, 55, 0.4)');
+                gradient.addColorStop(1, 'rgba(11, 15, 20, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath(); ctx.arc(l.x+6, l.y+8, 45, 0, Math.PI*2); ctx.fill();
+
+                // جسم الفانوس الطيني
+                ctx.fillStyle = "#8b5a2b";
+                ctx.fillRect(l.x, l.y, 12, 16);
+                ctx.fillStyle = "#ffcc00"; // الشعلة بالداخل
+                ctx.fillRect(l.x + 4, l.y + 4, 4, 6);
+            });
+
+            // رسم المنصات والأسطح
+            platforms.forEach(p => {
+                ctx.fillStyle = "#5c4033"; // لون الطين التراثي القديم للبيوت
+                ctx.fillRect(p.x, p.y, p.width, p.height);
+                ctx.fillStyle = "#3e2723"; // ظلال الطوب السفلي
+                ctx.fillRect(p.x, p.y + p.height - 4, p.width, 4);
+            });
+
+            // رسم الريالات الذهبية
+            goldCoins.forEach(c => {
+                if (!c.collected) {
+                    ctx.fillStyle = "#d4af37";
+                    ctx.beginPath(); ctx.arc(c.x, c.y, 6, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = "#fff"; ctx.fillRect(c.x-1, c.y-1, 2, 2); // لمعة عملة السدو
+                }
+            });
+
+            // رسم الأسهم الطائرة (G)
+            ctx.fillStyle = "#e0e0e0";
+            activeArrows.forEach(arrow => {
+                ctx.fillRect(arrow.x, arrow.y, 12, 3);
+            });
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            // حركات الـ Keyboard (A و D)
+            if (keys[65]) { player.velX = -player.speed; player.direction = 'left'; } // A يسار
+            if (keys[68]) { player.velX = player.speed; player.direction = 'right'; }  // D يمين
+
+            // القفز (Spacebar)
+            if (keys[32] && !player.jumping && player.grounded) {
+                player.jumping = true;
+                player.grounded = false;
+                player.velY = -player.jumpForce;
+            }
+
+            // تطبيق الجاذبية والاحتكاك المتقدم
             player.velX *= friction;
             player.velY += gravity;
-
             player.grounded = false;
+
+            // كشف الاصطدام والوقوف فوق أسطح البيوت الطينية
+            platforms.forEach(p => {
+                if (player.x < p.x + p.width && player.x + player.width > p.x &&
+                    player.y + player.height <= p.y + 8 && player.y + player.height + player.velY >= p.y) {
+                    player.jumping = false;
+                    player.grounded = true;
+                    player.isAirKicking = false; // إلغاء الركلة عند لمس الأرض
+                    player.velY = 0;
+                    player.y = p.y - player.height;
+                }
+            });
+
             player.x += player.velX;
             player.y += player.velY;
 
-            // نظام الجاذبية والوقوف على الأرض
-            if (player.y >= 350 - player.height) {
-                player.y = 350 - player.height;
-                player.jumping = false;
-                player.grounded = true;
-                player.velY = 0;
-            }
-
-            // منع اللاعب من الخروج خارج الشاشة
+            // منع الخروج من حدود الشاشة
             if (player.x < 0) player.x = 0;
             if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
 
-            // توقيت ضربة السيف
+            // إدارة توقيت ضربة السيف والركلة
             if (player.isAttacking) {
                 player.attackTimer--;
-                if (player.attackTimer <= 0) player.isAttacking = false;
+                if (player.attackTimer <= 0) {
+                    player.isAttacking = false;
+                    player.isAirKicking = false;
+                }
             }
 
-            // حركة الحراس والقتال
-            enemies.forEach((enemy, index) => {
-                enemy.x += enemy.speed;
-                if (Math.abs(enemy.x - enemy.startX) > enemy.range) {
-                    enemy.speed = -enemy.speed; // عكس الاتجاه عند نهاية المسار
-                }
+            // تفعيل حركة الركلة الجوية في حال كان بالهواء وضغط هجوم
+            if (player.jumping && player.isAttacking) {
+                player.isAirKicking = true;
+            }
 
-                // شرط ضرب الحارس بالسيف الكفو
-                let swordHit = false;
-                if (player.isAttacking) {
-                    if (player.direction === "right" && player.x + player.width + 20 > enemy.x && player.x < enemy.x + enemy.width && player.y + player.height > enemy.y && player.y < enemy.y + enemy.height) {
-                        swordHit = true;
-                    } else if (player.direction === "left" && player.x - 20 < enemy.x + enemy.width && player.x + player.width > enemy.x && player.y + player.height > enemy.y && player.y < enemy.y + enemy.height) {
-                        swordHit = true;
-                    }
-                }
-
-                if (swordHit) {
-                    enemies.splice(index, 1); // اختفاء الحارس المهزوم
-                } 
-                // إذا لمس الحارس اللاعب بدون ضربة سيف (إعادة هيبة المرحلة)
-                else if (player.x < enemy.x + enemy.width && player.x + player.width > enemy.x &&
-                    player.y < enemy.y + enemy.height && player.y + player.height > enemy.y) {
-                    resetLevel();
-                }
+            // تحريك الأسهم المطلقة
+            activeArrows.forEach((arrow, index) => {
+                arrow.x += arrow.dir === 'right' ? 8 : -8;
+                if (arrow.x > canvas.width || arrow.x < 0) activeArrows.splice(index, 1);
             });
 
-            // التقاط قطع الذهب الوفير
-            coins.forEach(coin => {
-                if (!coin.collected &&
-                    player.x < coin.x + coin.width && player.x + player.width > coin.x &&
-                    player.y < coin.y + coin.height && player.y + player.height > coin.y) {
-                    coin.collected = true;
-                    gold++;
-                    document.getElementById("goldScore").innerText = gold;
+            // جمع العملات الريالية القديمة
+            goldCoins.forEach(c => {
+                if (!c.collected && player.x < c.x + 6 && player.x + player.width > c.x - 6 &&
+                    player.y < c.y + 6 && player.y + player.height > c.y - 6) {
+                    c.collected = true;
+                    goldCount += 5; // كل قطعة بـ 5 ريال ذهبي
+                    document.getElementById("gold").innerText = goldCount;
                 }
             });
+        }
 
-            // الوصول للبوابة والانتقال للمراحل أو الفوز النهائي
-            if (player.x < gate.x + gate.width && player.x + player.width > gate.x &&
-                player.y < gate.y + gate.height && player.y + player.height > gate.y) {
-                if (currentLevel === 1) {
-                    currentLevel = 2;
-                    document.getElementById("levelNum").innerText = currentLevel;
-                    setupLevel2();
-                } else {
-                    alert("كفو وبيض الله وجهك! فتحت حصن المصمك وانتصرت في اللعبة! 👑🇸🇦");
-                    currentLevel = 1;
-                    gold = 0;
-                    document.getElementById("levelNum").innerText = currentLevel;
-                    document.getElementById("goldScore").innerText = gold;
-                    resetLevel();
-                }
+        // الاستماع لضغطات الكيبورد بدقة (A, D, Space, F, G)
+        window.addEventListener("keydown", e => {
+            keys[e.keyCode] = true;
+
+            // زر F: ضربة السيف أو الركلة الجوية
+            if (e.keyCode === 70 && !player.isAttacking) {
+                player.isAttacking = true;
+                player.attackTimer = 10; // عدد الإطارات للضربة
             }
-        }
 
-        // إعادة ضبط اللعبة عند الخسارة
-        function resetLevel() {
-            player.x = 50;
-            player.y = 300;
-            player.velX = 0;
-            player.velY = 0;
-            if (currentLevel === 1) {
-                enemies = [{ x: 450, y: 320, width: 30, height: 30, speed: 2, range: 120, startX: 450 }];
-                coins.forEach(c => c.collected = false);
-            } else {
-                setupLevel2();
+            // زر G: إطلاق الأسهم بعيدة المدى
+            if (e.keyCode === 71 && arrowCount > 0 && !player.isAttacking) {
+                arrowCount--;
+                document.getElementById("arrows").innerText = arrowCount;
+                activeArrows.push({
+                    x: player.direction === 'right' ? player.x + player.width : player.x - 12,
+                    y: player.y + 20,
+                    dir: player.direction
+                });
+                // ارتداد خفيف للخلف عند الإطلاق تشبه ألعاب الأكشن الاحترافية
+                player.velX += player.direction === 'right' ? -3 : 3;
             }
-        }
+        });
+        window.addEventListener("keyup", e => keys[e.keyCode] = false);
 
-        // تجهيز تحديات المرحلة الثانية
-        function setupLevel2() {
-            player.x = 50;
-            // حراس أكثر سرعة وحركة متقاطعة
-            enemies = [
-                { x: 280, y: 320, width: 30, height: 30, speed: 3.5, range: 90, startX: 280 },
-                { x: 520, y: 320, width: 30, height: 30, speed: -4, range: 110, startX: 520 }
-            ];
-            coins.forEach(c => c.collected = false);
-        }
-
-        // حلقة التشغيل اللانهائية للعبة
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawBackground();
+            drawEnvironment();
             drawPlayer();
-            drawEnemies();
-            drawCoins();
             update();
             requestAnimationFrame(gameLoop);
         }
 
-        // الاستماع لأزرار التحكم بالكيبورد
-        document.body.addEventListener("keydown", function (e) {
-            keys[e.keyCode] = true;
-            if (e.keyCode === 70) { // زر F لضرب السيف
-                player.isAttacking = true;
-                player.attackTimer = 12; // مدة بقاء السيف ظاهر بالبكسل
-            }
-        });
-
-        document.body.addEventListener("keyup", function (e) {
-            keys[e.keyCode] = false;
-        });
-
-        // تشغيل اللعبة فوراً
         gameLoop();
     </script>
 </body>
