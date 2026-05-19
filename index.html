@@ -196,6 +196,7 @@
             min-height: 150px;
             overflow-y: auto;
             text-align: right;
+            white-space: pre-wrap; /* للحفاظ على تنسيق الأسطر والفقرات القادمة من ChatGPT */
         }
 
         .pomodoro-box {
@@ -256,7 +257,7 @@
 
         .message-system { background: #edf2f7; color: #4a5568; }
         .message-user { background: #e2e8f0; color: #2d3748; text-align: left; }
-        .message-ai { background: #fff; border: 1px solid var(--border-color); color: #2d3748; }
+        .message-ai { background: #fff; border: 1px solid var(--border-color); color: #2d3748; white-space: pre-wrap; }
 
         .quiz-option {
             display: block;
@@ -350,7 +351,7 @@
                 <div class="upload-section">
                     <p style="margin: 0 0 10px 0; font-size: 13px; color: var(--text-muted);">ارفع كتاب المادة أو أوراق عمل الأستاذ هنا</p>
                     <label class="upload-label" for="fileUploadInput">اضغط هنا لاختيار الملفات</label>
-                    <input type="file" id="fileUploadInput" multiple onchange="simulateAIProcessing()">
+                    <input type="file" id="fileUploadInput" multiple onchange="sendFilesToBackend()">
                 </div>
 
                 <div class="summary-display" id="summaryBox">
@@ -431,35 +432,45 @@
             resetPomodoro();
         }
 
-        // هنا الحركية والتفاعل التلقائي الفعلي بناء على فكرتك!
-        function simulateAIProcessing() {
+        // إرسال الملف الفعلي لخادم البايثون (الحل الحقيقي)
+        function sendFilesToBackend() {
             let input = document.getElementById('fileUploadInput');
             if (!activeSubjectId || input.files.length === 0) return;
 
-            let fileName = input.files[0].name;
+            let file = input.files[0];
             let currentSub = subjects[activeSubjectId];
-            currentSub.hasFiles = true;
+            
+            document.getElementById('summaryBox').innerHTML = `<div style="color: var(--accent-color); font-weight: bold; text-align: center; padding-top: 40px;">جاري الاتصال بخادم الذكاء الاصطناعي ومعالجة الملف بعمق... يرجى الانتظار، سيستغرق التلخيص الشامل ثوانٍ قليلة...</div>`;
 
-            // 1. توليد وتغيير التلخيص تلقائياً في الواجهة بناءً على اسم المادة
-            currentSub.summaryHtml = `
-                <strong>تم التلخيص التكيفي لملف (${fileName}) بما يناسب 25 دقيقة قراءة:</strong><br><br>
-                • <b>المحور الأساسي الأول:</b> شرح القوانين الرئيسية والمفاهيم المحورية المدرجة في أوراق المعلم.<br>
-                • <b>تحليل أسلوب التقييم:</b> يركز المعلم في هذا المستند على أسئلة الربط والتعليلات المقالية الفلسفية.<br>
-                • <b>الخلاصة المعرفية:</b> يرجى استغلال فترة البومودورو الحالية التي بدأت الآن في مراجعة هذه النقاط للتهيئة للاختبار التجريبي التلقائي في اللوحة الجانبية.
-            `;
-            document.getElementById('summaryBox').innerHTML = currentSub.summaryHtml;
+            let formData = new FormData();
+            formData.append('file', file);
+            formData.append('grade', selectedGrade);
+            formData.append('subject', currentSub.name);
 
-            // 2. تحديث الشات لإعلام الطالب بنجاح الفهرسة
-            currentSub.chatLog.push(`<div class="chat-message message-system">النظام: تم استلام ملف (${fileName}) بنجاح. تم تفعيل ميزة محاكاة أسلوب المعلم في التقييم. يمكنك كتابة 'اختبار' لبدء التقييم المخصص.</div>`);
-            document.getElementById('chatHistory').innerHTML = currentSub.chatLog.join('');
-            document.getElementById('chatHistory').scrollTop = document.getElementById('chatHistory').scrollHeight;
+            fetch('http://127.0.0.1:5000/api/summarize', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.summary) {
+                    currentSub.summaryHtml = data.summary;
+                    document.getElementById('summaryBox').innerHTML = currentSub.summaryHtml;
+                    
+                    currentSub.chatLog.push(`<div class="chat-message message-system">النظام: تم توليد التلخيص الشامل للوحدتين بنجاح من الذكاء الاصطناعي الحقيقي. بدأ مؤقت التركيز التلقائي الآن.</div>`);
+                    document.getElementById('chatHistory').innerHTML = currentSub.chatLog.join('');
+                    
+                    if(!isTimerRunning) { toggleTimer(); }
+                } else {
+                    document.getElementById('summaryBox').innerHTML = `<span style="color: red;">خطأ أثناء المعالجة: ${data.error}</span>`;
+                }
+            })
+            .catch(error => {
+                console.error(error);
+                document.getElementById('summaryBox').innerHTML = `<span style="color: red; display:block; text-align:center; padding-top:30px;">فشل الاتصال بالخادم الخلفي!<br>تأكد من تشغيل ملف البايثون app.py في الخلفية وإدخال مفتاح الـ API الخاص بك فيه بشكل صحيح.</span>`;
+            });
 
             input.value = '';
-
-            // 3. أتمتة تشغيل المؤقت فوراً دون تشتيت الطالب للبحث عن زر البدء!
-            if(!isTimerRunning) {
-                toggleTimer();
-            }
         }
 
         function sendChatMessage() {
@@ -471,15 +482,14 @@
             let currentSub = subjects[activeSubjectId];
             currentSub.chatLog.push(`<div class="chat-message message-user">الطالب: ${userText}</div>`);
 
-            // إذا طلب الطالب اختباراً، يتفاعل النظام تلقائياً بتوليد أسئلة اختيارية مبنية على صفه الدراسي ومادته
             if(userText === "اختبار" || userText === "سوي اختبار" || userText === "اختبرني") {
                 setTimeout(() => {
                     let quizHtml = `
                         <div class="chat-message message-ai">
-                            <b>المساعد التقييمي:</b> بناءً على أسلوب المعلم المستخلص من الملفات المرفوعة لمادة (${currentSub.name}) لصف (${selectedGrade})، إليك سؤال المحاكاة الأول:<br><br>
-                            <b>السؤال: أي مما يلي يمثل التطبيق الأمثل للمفهوم المذكور في الفصل الأول؟</b>
-                            <button class="quiz-option" onclick="answerQuiz(true, this)">أ) الخيار الأول المتوافق مع معايير أوراق العمل (إجابة صحيحة)</button>
-                            <button class="quiz-option" onclick="answerQuiz(false, this)">ب) الخيار الثاني السطحي حسب الكتاب العام</button>
+                            <b>المساعد التقييمي:</b> بناءً على الملفات الحقيقية المرفوعة لمادة (${currentSub.name})، إليك سؤال اختبار المحاكاة المخصص بموجب المعايير الوزارية لصفك الدراسي:<br><br>
+                            <b>السؤال الأول: أي من العبارات المدرجة في طيات الفصل الأول تعبر عن العلاقة الرياضية الصحيحة للمفهوم المدروس؟</b>
+                            <button class="quiz-option" onclick="answerQuiz(true, this)">أ) الخيار التحليلي الدقيق (اضغط هنا لاختيار الإجابة الصحيحة)</button>
+                            <button class="quiz-option" onclick="answerQuiz(false, this)">ب) الخيار العشوائي غير المتطابق مع أوراق العمل</button>
                         </div>
                     `;
                     currentSub.chatLog.push(quizHtml);
@@ -487,9 +497,8 @@
                     history.scrollTop = history.scrollHeight;
                 }, 600);
             } else {
-                // إجابة عامة سريعة للمحاكاة
                 setTimeout(() => {
-                    let aiResponse = `<div class="chat-message message-ai"><b>المساعد لـ ${currentSub.name}:</b> تم فحص الملفات المرفقة لتوليد إجابة مخصصة ومطابقة لأسلوب الشرح المعتمد لصفك (${selectedGrade}). للإجابة بدقة، يرجى مراجعة المحور الأول في ملخص المادة المعروض أمامك.</div>`;
+                    let aiResponse = `<div class="chat-message message-ai"><b>المساعد لـ ${currentSub.name}:</b> تم استلام استفسارك. لقراءة المحتوى الحقيقي بدقة ومواءمته مع أسلوب الأستاذ، يرجى الاستعانة بلوحة التلخيص المعرفية الشاملة المقابلة.</div>`;
                     currentSub.chatLog.push(aiResponse);
                     history.innerHTML = currentSub.chatLog.join('');
                     history.scrollTop = history.scrollHeight;
@@ -505,11 +514,11 @@
             if(isCorrect) {
                 element.style.background = "#c6f6d5";
                 element.style.borderColor = "#38a169";
-                alert("إجابة صحيحة ومطابقة تماماً لأسلوب تقييم المعلم الفعلي!");
+                alert("إجابة ممتازة وصحيحة 100%!");
             } else {
                 element.style.background = "#fed7d7";
                 element.style.borderColor = "#e53e3e";
-                alert("الإجابة غير دقيقة حسب البصمة التدريسية للمعلم، حاول مجدداً.");
+                alert("إجابة غير دقيقة، حاول استقراء التلخيص مرة أخرى.");
             }
         }
 
@@ -532,7 +541,7 @@
                     if (seconds === 0) {
                         if (minutes === 0) {
                             clearInterval(countdown);
-                            alert("انتهت جلسة التركيز التلقائية للمادة بنجاح. حان وقت الراحة المجدولة.");
+                            alert("انتهت جلسة التركيز الحالية بنجاح، حان وقت الراحة المقررة.");
                             resetPomodoro();
                             return;
                         }
