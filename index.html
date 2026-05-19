@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>المنصة التعليمية الذكية</title>
+    <title>منصة المذاكرة الذكية الأكاديمية</title>
     <style>
         :root {
-            --bg-main: #faf8f5; /* بيج فاتح جداً قريب من الأبيض */
-            --bg-sidebar: #ffffff; /* قائمة جانبية بيضاء */
-            --text-main: #2c3e50;
-            --border-color: #e6e1da;
+            --bg-main: #fbf9f6; /* بيج ناعم جداً وقريب للأبيض */
+            --bg-sidebar: #ffffff; /* قائمة بيضاء صريحة */
+            --text-main: #2d3748;
+            --text-muted: #718096;
+            --border-color: #e2e8f0;
             --accent-color: #4a5568;
+            --accent-light: #edf2f7;
+            --success-color: #2f855a;
         }
 
         body {
@@ -24,56 +27,56 @@
             overflow: hidden;
         }
 
-        /* شاشة اختيار الصف عند التسجيل */
+        /* شاشة اختيار الصف عند الدخول */
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.4);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex; justify-content: center; align-items: center;
             z-index: 1000;
+            backdrop-filter: blur(2px);
         }
 
         .modal-box {
             background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
             text-align: center;
-            width: 350px;
+            width: 380px;
         }
 
         .modal-box select {
             width: 100%;
-            padding: 10px;
-            margin: 15px 0;
+            padding: 12px;
+            margin: 20px 0;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 16px;
+            outline: none;
+            background-color: var(--bg-main);
         }
 
         .modal-box button {
-            padding: 10px 20px;
+            padding: 12px 20px;
             background-color: var(--accent-color);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             width: 100%;
+            font-size: 15px;
+            font-weight: 600;
         }
 
-        /* القائمة الجانبية البيضاء */
+        /* القائمة الجانبية */
         .sidebar {
-            width: 260px;
+            width: 280px;
             background-color: var(--bg-sidebar);
             border-left: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            padding: 15px;
+            padding: 20px;
             height: 100%;
             box-sizing: border-box;
         }
@@ -82,34 +85,31 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 15px;
+            padding-bottom: 20px;
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .sidebar-header h3 {
-            margin: 0;
-            font-size: 16px;
-            font-weight: 600;
+            margin: 0; font-size: 15px; font-weight: 600; color: var(--text-main);
         }
 
         .add-btn {
-            background: none;
+            background: var(--bg-main);
             border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 18px;
+            border-radius: 6px;
+            font-size: 20px;
             cursor: pointer;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            width: 36px;
+            height: 36px;
+            display: flex; justify-content: center; align-items: center;
             color: var(--accent-color);
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
 
         .add-btn:hover {
-            background-color: var(--bg-main);
+            background: var(--accent-color);
+            color: white;
         }
 
         .subjects-list {
@@ -117,84 +117,85 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 8px;
         }
 
         .subject-item {
-            padding: 10px 12px;
-            border-radius: 4px;
+            padding: 12px 15px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
-            transition: background 0.2s;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            color: var(--text-main);
+            transition: all 0.2s;
         }
 
         .subject-item:hover, .subject-item.active {
-            background-color: var(--bg-main);
-            font-weight: bold;
+            background-color: var(--accent-light);
+            font-weight: 600;
         }
 
         .user-info {
-            padding-top: 10px;
+            padding-top: 15px;
             border-top: 1px solid var(--border-color);
             font-size: 13px;
-            color: #7f8c8d;
+            color: var(--text-muted);
         }
 
-        /* مساحة العمل الرئيسية */
+        /* مساحة العمل */
         .main-content {
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             height: 100%;
-            padding: 20px;
+            padding: 25px;
             box-sizing: border-box;
         }
 
         .view-panel {
-            display: none; /* مخفي افتراضياً حتى يتم اختيار قسم */
+            display: none;
             height: 100%;
-            gap: 20px;
+            gap: 25px;
         }
 
         .workspace {
-            flex: 2;
+            flex: 1.3;
             background: white;
             border: 1px solid var(--border-color);
-            border-radius: 6px;
-            padding: 20px;
+            border-radius: 8px;
+            padding: 25px;
             display: flex;
             flex-direction: column;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
         }
 
         .upload-section {
             border: 2px dashed var(--border-color);
-            padding: 30px;
+            padding: 25px;
             text-align: center;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            background: #fdfdfd;
-        }
-
-        .upload-section input[type="file"] {
-            display: none;
+            border-radius: 8px;
+            background: var(--bg-main);
+            transition: background 0.3s;
         }
 
         .upload-label {
             cursor: pointer;
-            color: #34495e;
-            text-decoration: underline;
+            color: var(--accent-color);
+            font-weight: 600;
             font-size: 14px;
+            text-decoration: underline;
         }
 
-        .files-list {
-            margin-top: 10px;
-            font-size: 13px;
-            text-align: right;
-            max-height: 100px;
+        .summary-display {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fffdf9;
+            border: 1px solid #f3ede2;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.7;
+            min-height: 150px;
             overflow-y: auto;
+            text-align: right;
         }
 
         .pomodoro-box {
@@ -205,65 +206,95 @@
         }
 
         .timer-display {
-            font-size: 42px;
-            font-weight: bold;
-            margin: 10px 0;
-            color: #34495e;
+            font-size: 54px;
+            font-weight: 700;
+            margin: 5px 0;
+            color: #2d3748;
+            font-variant-numeric: tabular-nums;
         }
 
         .control-btn {
-            padding: 8px 24px;
+            padding: 10px 30px;
             background-color: var(--accent-color);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
+            font-weight: 600;
         }
 
-        /* لوحة الذكاء الاصطناعي الخاصة بالمادة */
+        /* لوحة الذكاء الاصطناعي الجانبية */
         .ai-panel {
             flex: 1;
             background: white;
             border: 1px solid var(--border-color);
-            border-radius: 6px;
+            border-radius: 8px;
             display: flex;
             flex-direction: column;
-            padding: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
         }
 
         .chat-history {
             flex-grow: 1;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 10px;
+            border-radius: 6px;
+            padding: 15px;
             overflow-y: auto;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             font-size: 13px;
-            background: #fafafa;
+            background: #faf9f6;
+            line-height: 1.6;
         }
+
+        .chat-message {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        .message-system { background: #edf2f7; color: #4a5568; }
+        .message-user { background: #e2e8f0; color: #2d3748; text-align: left; }
+        .message-ai { background: #fff; border: 1px solid var(--border-color); color: #2d3748; }
+
+        .quiz-option {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin: 6px 0;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: right;
+            font-size: 12px;
+        }
+        .quiz-option:hover { background: var(--bg-main); }
 
         .chat-input-area {
             display: flex;
-            gap: 5px;
+            gap: 8px;
         }
 
         .chat-input-area input {
             flex-grow: 1;
-            padding: 8px;
+            padding: 12px;
             border: 1px solid var(--border-color);
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 13px;
+            outline: none;
         }
 
         .chat-input-area button {
-            padding: 8px 15px;
+            padding: 12px 20px;
             background-color: var(--accent-color);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 13px;
+            font-weight: 600;
         }
 
         .no-selection {
@@ -271,18 +302,18 @@
             justify-content: center;
             align-items: center;
             height: 100%;
-            color: #7f8c8d;
+            color: var(--text-muted);
             font-size: 15px;
         }
     </style>
 </head>
 <body>
 
-    <!-- نافذة التسجيل لاختيار الصف عند الدخول لأول مرة -->
+    <!-- نافذة التسجيل واختيار الصف المسبق -->
     <div class="modal-overlay" id="registrationModal">
         <div class="modal-box">
-            <h3>مرحباً بك في المنصة التعليمية</h3>
-            <p>يرجى تحديد الصف الدراسي لإعداد الحساب:</p>
+            <h3 style="margin-top:0;">إعداد المنصة الأكاديمية</h3>
+            <p style="color: var(--text-muted); font-size:14px;">يرجى تحديد المرحلة الحالية لتوجيه محرك التلخيص والتقييم ذكياً:</p>
             <select id="gradeSelect">
                 <option value="الأول المتوسط">الأول المتوسط</option>
                 <option value="الثاني المتوسط">الثاني المتوسط</option>
@@ -291,57 +322,53 @@
                 <option value="الثاني الثانوي">الثاني الثانوي</option>
                 <option value="الثالث الثانوي">الثالث الثانوي</option>
             </select>
-            <button onclick="saveRegistration()">إتمام التسجيل</button>
+            <button onclick="saveRegistration()">دخول المنصة</button>
         </div>
     </div>
 
     <!-- القائمة الجانبية البيضاء -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <h3>أقسام المواد الدراسية</h3>
+            <h3>المواد الدراسية</h3>
             <button class="add-btn" onclick="createNewSubject()">+</button>
         </div>
-        <div class="subjects-list" id="subjectsList">
-            <!-- الأقسام المضافة ستظهر هنا تلقائياً بقائمة فاضية بالبداية -->
-        </div>
-        <div class="user-info" id="userInfoDisplay">
-            الصف الدراسي: لم يحدد بعد
-        </div>
+        <div class="subjects-list" id="subjectsList"></div>
+        <div class="user-info" id="userInfoDisplay">الصف الدراسي: لم يحدد بعد</div>
     </div>
 
-    <!-- مساحة العمل الرئيسية البيج -->
+    <!-- مساحة العمل الرئيسية البيج الفاتح -->
     <div class="main-content">
         <div class="no-selection" id="noSelectionMessage">
-            يرجى إنشاء قسم مادة جديد من القائمة الجانبية للبدء في رفع الملفات والمذاكرة.
+            يرجى إضافة مادة جديدة من علامة (+) للبدء بالعمل الفعلي.
         </div>
 
         <div class="view-panel" id="mainViewPanel">
-            <!-- لوحة المادة والملفات والمؤقت -->
+            <!-- اللوحة اليمنى للمادة والتلخيص والمؤقت الآلي -->
             <div class="workspace">
-                <h2 id="currentSubjectTitle">اسم المادة</h2>
+                <h2 id="currentSubjectTitle" style="margin-top:0; font-size:20px;">اسم المادة</h2>
                 
                 <div class="upload-section">
-                    <p style="margin: 0 0 10px 0; font-size: 14px;">قم برفع المستندات أو ملخصات الأستاذ الخاصة بهذه المادة</p>
+                    <p style="margin: 0 0 10px 0; font-size: 13px; color: var(--text-muted);">ارفع كتاب المادة أو أوراق عمل الأستاذ هنا</p>
                     <label class="upload-label" for="fileUploadInput">اضغط هنا لاختيار الملفات</label>
-                    <input type="file" id="fileUploadInput" multiple onchange="handleFileSelection()">
-                    <div class="files-list" id="uploadedFilesList"></div>
+                    <input type="file" id="fileUploadInput" multiple onchange="simulateAIProcessing()">
+                </div>
+
+                <div class="summary-display" id="summaryBox">
+                    <span style="color: var(--text-muted);">بانتظار رفع ملفات المادة لتوليد التلخيص المخصص تلقائياً وبدء جلسة البومودورو...</span>
                 </div>
 
                 <div class="pomodoro-box">
-                    <div style="font-size: 14px; color: #7f8c8d;">جلسة تركيز بومودورو الآلية لمحتوى المادة</div>
                     <div class="timer-display" id="timer">25:00</div>
                     <button class="control-btn" onclick="toggleTimer()">بدء المذاكرة</button>
                 </div>
             </div>
 
-            <!-- لوحة الذكاء الاصطناعي المستقلة لكل مادة -->
+            <!-- اللوحة اليسرى للشات الذكي الخاص بالمادة والاختبارات التفاعلية -->
             <div class="ai-panel">
-                <h3 style="margin-top: 0; font-size: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;" id="aiPanelTitle">المساعد الذكي للمادة</h3>
-                <div class="chat-history" id="chatHistory">
-                    <div>النظام: ارفع ملفات المادة، وسأقوم بتلخيصها واختبارك بناءً عليها وعلى أسلوب معلمك الحقيقي.</div>
-                </div>
+                <h3 style="margin-top: 0; font-size: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;" id="aiPanelTitle">المساعد الذكي للمادة</h3>
+                <div class="chat-history" id="chatHistory"></div>
                 <div class="chat-input-area">
-                    <input type="text" id="chatInputField" placeholder="اسأل عن المنهج أو اطلب اختباراً...">
+                    <input type="text" id="chatInputField" placeholder="اسأل عن المنهج أو اكتب 'اختبار' لتوليد تقييم آلي...">
                     <button onclick="sendChatMessage()">إرسال</button>
                 </div>
             </div>
@@ -353,35 +380,33 @@
         let activeSubjectId = null;
         let countdown;
         let isTimerRunning = false;
+        let selectedGrade = "";
 
-        // إتمام خطوة التسجيل وتثبيت الصف الدراسي
         function saveRegistration() {
-            let selectedGrade = document.getElementById('gradeSelect').value;
+            selectedGrade = document.getElementById('gradeSelect').value;
             document.getElementById('userInfoDisplay').innerText = `الصف: ${selectedGrade}`;
             document.getElementById('registrationModal').style.display = 'none';
         }
 
-        // إنشاء قسم مادة جديد يخص الطالب وتسميته بحرية
         function createNewSubject() {
-            let subjectName = prompt("أدخل اسم القسم الجديد (مثال: الفيزياء، الرياضيات):");
+            let subjectName = prompt("أدخل اسم المادة الجديدة لتأسيس القسم المخصص لها:");
             if (!subjectName || subjectName.trim() === "") return;
 
             let id = 'sub_' + Date.now();
             subjects[id] = {
                 name: subjectName,
-                files: [],
-                chatLog: [`<div>النظام: تم إنشاء قسم مخصص لمادة (${subjectName}). يمكنك الآن رفع الكتب أو أوراق العمل وبدء الحوار العلمي ونظام التقييم.</div>`]
+                hasFiles: false,
+                summaryHtml: `<span style="color: var(--text-muted);">لم يتم رفع ملفات في مادة ${subjectName} حتى الآن. ارفع ملفاً ليقوم الذكاء الاصطناعي بتلخيصه بما يتناسب مع وقت المذاكرة الحالي (25 دقيقة).</span>`,
+                chatLog: [`<div class="chat-message message-system">النظام: تم إعداد محرك مخصص لمادة ${subjectName} لصفك (${selectedGrade}). ارفع ملفات الأستاذ هنا وسنتولى مواءمة المحتوى والأسئلة تلقائياً.</div>`]
             };
 
             renderSubjectsList();
             switchSubject(id);
         }
 
-        // تحديث وعرض قائمة المواد في اللوحة الجانبية
         function renderSubjectsList() {
             let listContainer = document.getElementById('subjectsList');
             listContainer.innerHTML = '';
-
             for (let id in subjects) {
                 let div = document.createElement('div');
                 div.className = `subject-item ${id === activeSubjectId ? 'active' : ''}`;
@@ -391,75 +416,103 @@
             }
         }
 
-        // التنقل بين الأقسام المختلفة وتحديث شات الذكاء الاصطناعي لكل مادة على حدة
         function switchSubject(id) {
             activeSubjectId = id;
             renderSubjectsList();
 
             document.getElementById('noSelectionMessage').style.display = 'none';
             document.getElementById('mainViewPanel').style.display = 'flex';
-
             document.getElementById('currentSubjectTitle').innerText = subjects[id].name;
             document.getElementById('aiPanelTitle').innerText = `المساعد الذكي لـ ${subjects[id].name}`;
 
-            // تحديث قائمة الملفات والدردشة الخاصة بالمادة المحددة
-            updateFilesListDisplay();
+            document.getElementById('summaryBox').innerHTML = subjects[id].summaryHtml;
             document.getElementById('chatHistory').innerHTML = subjects[id].chatLog.join('');
             
-            // إعادة ضبط المؤقت عند الانتقال لمادة أخرى
             resetPomodoro();
         }
 
-        // التعامل مع رفع الملفات داخل قسم المادة
-        function handleFileSelection() {
+        // هنا الحركية والتفاعل التلقائي الفعلي بناء على فكرتك!
+        function simulateAIProcessing() {
             let input = document.getElementById('fileUploadInput');
             if (!activeSubjectId || input.files.length === 0) return;
 
-            for (let i = 0; i < input.files.length; i++) {
-                subjects[activeSubjectId].files.push(input.files[i].name);
-            }
+            let fileName = input.files[0].name;
+            let currentSub = subjects[activeSubjectId];
+            currentSub.hasFiles = true;
 
-            updateFilesListDisplay();
-            subjects[activeSubjectId].chatLog.push(`<div><b>النظام:</b> تم استلام وتحليل ملف جديد في المادة. يمكنك الآن الاستفسار عن محتواه أو طلب تلخيصه أو إنشاء اختبارات تحاكي أسلوبه.</div>`);
-            document.getElementById('chatHistory').innerHTML = subjects[activeSubjectId].chatLog.join('');
+            // 1. توليد وتغيير التلخيص تلقائياً في الواجهة بناءً على اسم المادة
+            currentSub.summaryHtml = `
+                <strong>تم التلخيص التكيفي لملف (${fileName}) بما يناسب 25 دقيقة قراءة:</strong><br><br>
+                • <b>المحور الأساسي الأول:</b> شرح القوانين الرئيسية والمفاهيم المحورية المدرجة في أوراق المعلم.<br>
+                • <b>تحليل أسلوب التقييم:</b> يركز المعلم في هذا المستند على أسئلة الربط والتعليلات المقالية الفلسفية.<br>
+                • <b>الخلاصة المعرفية:</b> يرجى استغلال فترة البومودورو الحالية التي بدأت الآن في مراجعة هذه النقاط للتهيئة للاختبار التجريبي التلقائي في اللوحة الجانبية.
+            `;
+            document.getElementById('summaryBox').innerHTML = currentSub.summaryHtml;
+
+            // 2. تحديث الشات لإعلام الطالب بنجاح الفهرسة
+            currentSub.chatLog.push(`<div class="chat-message message-system">النظام: تم استلام ملف (${fileName}) بنجاح. تم تفعيل ميزة محاكاة أسلوب المعلم في التقييم. يمكنك كتابة 'اختبار' لبدء التقييم المخصص.</div>`);
+            document.getElementById('chatHistory').innerHTML = currentSub.chatLog.join('');
+            document.getElementById('chatHistory').scrollTop = document.getElementById('chatHistory').scrollHeight;
+
             input.value = '';
-        }
 
-        function updateFilesListDisplay() {
-            let listDisplay = document.getElementById('uploadedFilesList');
-            if (!activeSubjectId) return;
-
-            let files = subjects[activeSubjectId].files;
-            if (files.length === 0) {
-                listDisplay.innerHTML = '<span style="color:#aaa;">لا توجد ملفات مرفوعة في هذا القسم بعد.</span>';
-            } else {
-                listDisplay.innerHTML = '<b>الملفات المرفوعة:</b><br>' + files.map(f => `- ${f}`).join('<br>');
+            // 3. أتمتة تشغيل المؤقت فوراً دون تشتيت الطالب للبحث عن زر البدء!
+            if(!isTimerRunning) {
+                toggleTimer();
             }
         }
 
-        // إدارة شات الذكاء الاصطناعي لكل قسم بشكل مستقل
         function sendChatMessage() {
             let input = document.getElementById('chatInputField');
             let history = document.getElementById('chatHistory');
             if (!activeSubjectId || input.value.trim() === "") return;
 
-            let userText = input.value;
-            subjects[activeSubjectId].chatLog.push(`<div><b>الطالب:</b> ${userText}</div>`);
-            
-            // محاكاة استجابة مخصصة من محرك الذكاء الاصطناعي للمادة
-            setTimeout(() => {
-                let aiResponse = `<div><b>المساعد:</b> تم مراجعة مستندات قسم (${subjects[activeSubjectId].name}) لإجابة سؤالك بدقة، ومطابقة الشرح مع أسلوب المعلم المتوفر بالأوراق المفهرسة.</div>`;
-                subjects[activeSubjectId].chatLog.push(aiResponse);
-                history.innerHTML = subjects[activeSubjectId].chatLog.join('');
-                history.scrollTop = history.scrollHeight;
-            }, 800);
+            let userText = input.value.trim();
+            let currentSub = subjects[activeSubjectId];
+            currentSub.chatLog.push(`<div class="chat-message message-user">الطالب: ${userText}</div>`);
 
-            history.innerHTML = subjects[activeSubjectId].chatLog.join('');
+            // إذا طلب الطالب اختباراً، يتفاعل النظام تلقائياً بتوليد أسئلة اختيارية مبنية على صفه الدراسي ومادته
+            if(userText === "اختبار" || userText === "سوي اختبار" || userText === "اختبرني") {
+                setTimeout(() => {
+                    let quizHtml = `
+                        <div class="chat-message message-ai">
+                            <b>المساعد التقييمي:</b> بناءً على أسلوب المعلم المستخلص من الملفات المرفوعة لمادة (${currentSub.name}) لصف (${selectedGrade})، إليك سؤال المحاكاة الأول:<br><br>
+                            <b>السؤال: أي مما يلي يمثل التطبيق الأمثل للمفهوم المذكور في الفصل الأول؟</b>
+                            <button class="quiz-option" onclick="answerQuiz(true, this)">أ) الخيار الأول المتوافق مع معايير أوراق العمل (إجابة صحيحة)</button>
+                            <button class="quiz-option" onclick="answerQuiz(false, this)">ب) الخيار الثاني السطحي حسب الكتاب العام</button>
+                        </div>
+                    `;
+                    currentSub.chatLog.push(quizHtml);
+                    history.innerHTML = currentSub.chatLog.join('');
+                    history.scrollTop = history.scrollHeight;
+                }, 600);
+            } else {
+                // إجابة عامة سريعة للمحاكاة
+                setTimeout(() => {
+                    let aiResponse = `<div class="chat-message message-ai"><b>المساعد لـ ${currentSub.name}:</b> تم فحص الملفات المرفقة لتوليد إجابة مخصصة ومطابقة لأسلوب الشرح المعتمد لصفك (${selectedGrade}). للإجابة بدقة، يرجى مراجعة المحور الأول في ملخص المادة المعروض أمامك.</div>`;
+                    currentSub.chatLog.push(aiResponse);
+                    history.innerHTML = currentSub.chatLog.join('');
+                    history.scrollTop = history.scrollHeight;
+                }, 600);
+            }
+
+            history.innerHTML = currentSub.chatLog.join('');
             input.value = '';
             history.scrollTop = history.scrollHeight;
         }
 
-        // تشغيل وإيقاف مؤقت البومودورو
+        function answerQuiz(isCorrect, element) {
+            if(isCorrect) {
+                element.style.background = "#c6f6d5";
+                element.style.borderColor = "#38a169";
+                alert("إجابة صحيحة ومطابقة تماماً لأسلوب تقييم المعلم الفعلي!");
+            } else {
+                element.style.background = "#fed7d7";
+                element.style.borderColor = "#e53e3e";
+                alert("الإجابة غير دقيقة حسب البصمة التدريسية للمعلم، حاول مجدداً.");
+            }
+        }
+
         function toggleTimer() {
             let btn = document.querySelector('.control-btn');
             if (isTimerRunning) {
@@ -470,15 +523,16 @@
                 isTimerRunning = true;
                 btn.innerText = "إيقاف مؤقت";
                 let timerDisplay = document.getElementById('timer');
-                let timeParts = timerDisplay.innerText.split(':');
-                let minutes = parseInt(timeParts[0]);
-                let seconds = parseInt(timeParts[1]);
-
+                
                 countdown = setInterval(() => {
+                    let timeParts = timerDisplay.innerText.split(':');
+                    let minutes = parseInt(timeParts[0]);
+                    let seconds = parseInt(timeParts[1]);
+
                     if (seconds === 0) {
                         if (minutes === 0) {
                             clearInterval(countdown);
-                            alert("انتهت جلسة التركيز المخصصة للقسم الحالي بنجاح. يرجى أخذ وقت الراحة المقررة تلقائياً.");
+                            alert("انتهت جلسة التركيز التلقائية للمادة بنجاح. حان وقت الراحة المجدولة.");
                             resetPomodoro();
                             return;
                         }
